@@ -64,6 +64,22 @@ arrays**, which are required for noise normalisation and for the exposure-count 
 - Astrometry is Gaia-aligned, so candidate positions are good to well under 0.1″ and are
   directly usable in follow-up proposals.
 
+## Amendment, 2026-07-28 (Phase 1)
+
+The Context above assumes HAP Single-Visit Mosaics are available from the cloud copy.
+**They are not, or at least not universally.** Resolving cloud URIs for the RBH-1
+discovery visit returned "unable to locate file" for every
+`hap/public/.../hst_16912_02_acs_wfc_f606w_jety02_drc.fits` path, while the standard
+association products `s3://stpubdata/hst/public/jety/jety02010/jety02010_drc.fits` were
+present and readable.
+
+The Decision is unchanged, because the association products are drizzled, cosmic-ray
+rejected, and carry the weight and context arrays we need — everything the decision
+actually relies on. What we lose is HAP's uniform Gaia DR3 re-registration, so astrometric
+provenance now varies with each programme's original solution. The manifest must therefore
+record which product type each tile came from, and Phase 3 should re-check HAP cloud
+coverage across the archive rather than generalising from one visit.
+
 ## Alternatives considered
 
 - **Individual `flc`/`cal` exposures.** Maximum information and full control over

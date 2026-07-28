@@ -217,6 +217,7 @@ Full reasoning for each is one click away.
 | [0013](adr/0013-survey-agnostic-io.md) | Keep telescope-specific bits in one place | So pointing at Euclid in October is a small job, not a rewrite. |
 | [0014](adr/0014-output-data-model.md) | Fixed output formats and what we keep | Including keeping the *rejects*, because "why was this thrown out?" is the question people actually ask. |
 | [0015](adr/0015-no-discovery-claims.md) | We produce candidates, never discoveries | Confirming one needs a spectrograph, which we don't have. Pictures alone were not enough for the experts and won't be enough for us. |
+| [0016](adr/0016-rejoin-collinear-fragments.md) | Stitch broken-up streaks back together | A wake is a chain of clumps, so any cutoff strict enough to reject noise snips the faint bits between them. Better to rejoin the pieces than to tune the cutoff to a knife edge. |
 
 ---
 
@@ -262,19 +263,32 @@ uv run rbh reference             # show the RBH-1 facts we test against
 
 ## Where are we right now?
 
-**Phase 0 of 6: complete.** ✅
+**Phases 0 and 1 of 6: complete.** ✅
 
-That means: the project is set up, every decision is written down, and the automatic
-quality checks all pass. There is **no working detector yet** — that's deliberate. We
-agreed the plan before writing the code.
+**The detector works.** Given the original 2022 Hubble image, it finds RBH-1 by itself —
+no hints about where to look. It measures the streak as 5.5 arcseconds long and 20 times
+longer than it is wide, and if you measure from the host galaxy to the far end you get
+8.1 arcseconds against the 7.8 that was published. Out of everything else in that patch of
+sky, exactly one thing passes our filters, and it's the right one.
 
-**Phase 1 is next: prove it on RBH-1.** Download the original discovery image, write the
-streak-finder, and get it to find RBH-1 automatically. Until that works, nothing else is
-worth building.
+Two things went wrong along the way, which is the useful part:
+
+- **The published coordinate isn't where the streak is.** It's about 5.5 arcseconds away.
+  That looked like a bug for a while. It turned out the published coordinate marks the
+  *host galaxy* at one end of the wake, not its middle — and it sits within 0.11
+  arcseconds of the streak's own centre line, so it's exactly on it.
+- **The streak kept breaking into three pieces.** A wake is a chain of bright clumps with
+  faint bridges between them, and any cutoff strict enough to reject noise also snips
+  those bridges. Rather than fiddling with the cutoff until it happened to work, we now
+  detect the pieces and stitch back together the ones that line up
+  ([ADR-0016](adr/0016-rejoin-collinear-fragments.md)).
+
+**Phase 2 is next: the measurement.** This is section 7 above — hiding fake wakes in real
+images to find out what fraction we'd catch. Until that exists, we can find things but we
+can't say what we'd have missed.
 
 The full phase list, with what each one has to achieve before the next begins, is in the
 [roadmap](design/roadmap.md).
 
-One thing worth doing early: the free NASA cloud service needs an application, and we
-don't control how long approval takes. Better to apply during Phase 1 than to find it
-blocking us in Phase 3.
+One thing worth doing soon: the free NASA cloud service needs an application, and we don't
+control how long approval takes. Better to apply now than to find it blocking Phase 3.

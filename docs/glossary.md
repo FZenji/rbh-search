@@ -202,6 +202,17 @@ make sense, it should be here — if it isn't, that's a documentation bug worth 
 : Our main detection tool. An image filter designed to highlight thin line-like structures.
   Borrowed from medical imaging, where the same maths finds blood vessels in scans.
 
+**Hysteresis thresholding**
+: A two-cutoff trick. Anything above the *high* cutoff is definitely real; anything
+  connected to it and above the *low* cutoff gets included too. It lets us follow a faint
+  streak outward from its bright knots without accepting every faint blob in the image.
+  Same idea as the edge detection in a photo editor.
+
+**Fragment linking**
+: Stitching detected pieces back into one object when they line up. A wake is a chain of
+  bright clumps with faint bridges, so a threshold strict enough to reject noise snips the
+  bridges. See [ADR-0016](adr/0016-rejoin-collinear-fragments.md).
+
 **Radon / Hough transform**
 : A different mathematical approach to finding straight lines — it effectively tests every
   possible line through the image and asks how much light sits along it. We use a version

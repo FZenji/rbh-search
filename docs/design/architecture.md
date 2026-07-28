@@ -35,8 +35,9 @@
           ▼
 ┌───────────────────┐   ← streamed from S3 via fsspec byte-range reads
 │ 2. DETECT         │  background model → bright-star mask → multi-scale ridge
-│    (per tile)     │  filter (Meijering/Sato) → noise-normalise by weight map
-│                   │  → threshold → connected components
+│    (per tile)     │  filter (Meijering) → noise-normalise by weight map →
+│                   │  hysteresis threshold → connected components →
+│                   │  rejoin collinear fragments (ADR-0016)
 └─────────┬─────────┘
           │  ~10³–10⁴ raw ridges per deg²
           ▼
@@ -111,6 +112,14 @@ segmentation it does not shred a low-surface-brightness filament into disconnect
 Critically, the response is **normalised by the local noise derived from the weight map**,
 not by a global sigma. Archival mosaics have wildly non-uniform depth; a global threshold
 would produce all its detections at the shallow edges.
+
+Thresholding is **hysteretic** — components grow at a low threshold for connectivity but
+survive only if seeded by a pixel above a high one — and surviving fragments are then
+**rejoined if collinear** ([ADR-0016](../adr/0016-rejoin-collinear-fragments.md)). Both
+exist for the same reason: a wake is a chain of knots joined by faint bridges, and any
+threshold strict enough to reject the noise field cuts some of those bridges. On RBH-1 the
+difference is a single 5.5″ feature versus three pieces of ~2″ that would each fail the
+selection window.
 
 ### 3–4. Morphology and artifact vetting
 

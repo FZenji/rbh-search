@@ -62,3 +62,4 @@ nav:
       - 0013 Survey-agnostic IO: adr/0013-survey-agnostic-io.md
       - 0014 Output data model: adr/0014-output-data-model.md
       - 0015 No discovery claims: adr/0015-no-discovery-claims.md
+      - 0016 Rejoin collinear fragments: adr/0016-rejoin-collinear-fragments.md

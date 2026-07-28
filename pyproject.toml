@@ -33,6 +33,7 @@ dependencies = [
     "scikit-image>=0.24",
     "photutils>=2.0",
     "astroquery>=0.4.10",
+    "boto3>=1.35",
     "fsspec>=2024.10",
     "s3fs>=2024.10",
     "pyarrow>=18.0",
@@ -67,6 +68,7 @@ dev = [
     "mypy>=1.13",
     "ruff>=0.8",
     "pre-commit>=4.0",
+    "scipy-stubs>=1.15",
 ]
 docs = [
     "mkdocs-material>=9.5",
@@ -110,13 +112,26 @@ select = [
     "W",    # pycodestyle warnings
 ]
 ignore = [
-    "D107", # missing docstring in __init__ (covered by class docstring)
-    "D203", # incompatible with D211
-    "D213", # incompatible with D212
+    "D107",    # missing docstring in __init__ (covered by class docstring)
+    "D105",    # magic-method docstrings; __post_init__ validation is self-describing
+    "D203",    # incompatible with D211
+    "D213",    # incompatible with D212
+    # Detection and measurement functions legitimately expose many tuning parameters,
+    # each of which is part of the selection function (ADR-0007) and so must be an
+    # explicit argument rather than hidden state. They are all keyword-only.
+    "PLR0913", # too many arguments
+    "PLR0917", # too many positional arguments
+    # Numeric thresholds like "at least 3 bins" read better inline than as named
+    # constants, and the ones that matter scientifically already live in Settings.
+    "PLR2004", # magic value in comparison
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["ANN", "D", "PLR2004", "S101"]
+"tests/**/*.py" = ["ANN", "D", "S101"]
+# The CLI defers heavy imports (astroquery, boto3) into the commands that need them, so
+# that `rbh version` does not pay for the archive stack.
+"src/rbh/cli.py" = ["PLC0415"]
+"src/rbh/fetch.py" = ["PLC0415"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
@@ -141,10 +156,18 @@ module = [
     "acstools.*",
     "mocpy.*",
     "photutils.*",
-    "skimage.*",
     "s3fs.*",
 ]
 ignore_missing_imports = true
+
+# scikit-image ships no type information, so mypy sees every function as untyped and
+# rejects the calls. Skipping it makes those calls Any-typed rather than errors; our own
+# wrappers around them are fully annotated, which is where the checking that matters is.
+# scipy is checked for real via scipy-stubs.
+[[tool.mypy.overrides]]
+module = ["skimage.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
 
 # ---------------------------------------------------------------------------
 # pytest

@@ -14,18 +14,34 @@ before any science code exists.
 
 ---
 
-## Phase 1 — Litmus
+## Phase 1 — Litmus ✅
 
 Prove the concept on the one object we know about, entirely offline.
 
-- Fetch and cache the RBH-1 discovery cutout (GO-16912, ACS F606W + F814W) as a committed
-  CI fixture with recorded provenance.
-- Implement the ridge-filter detector and morphology measurement (stages 2–3).
-- Recover RBH-1 with measured length, width, axis ratio, PA and colour-gradient sign
-  matching the published values.
+**Gate met:** `pytest -m litmus` passes offline and deterministically, 9 assertions.
 
-**Gate:** `pytest -m litmus` passes offline and deterministically. Without this, nothing
-downstream means anything.
+What the pipeline recovers from the discovery data:
+
+| Quantity | Recovered | Published |
+|---|---|---|
+| Length | 5.50″ (bright section) | — |
+| Host coordinate → far endpoint | **8.10″** | **7.8″** (62 kpc) |
+| Width (FWHM) | 0.27″ | 0.06–0.15″ intrinsic, ACS PSF ≈ 0.1″ |
+| Axis ratio | 20 | > 50 intrinsic |
+| Position angle | 148.3° | — |
+| Straightness residual | 0.035″ | slight curvature reported |
+| Colour gradient | −0.047 ± 0.021 mag/arcsec, bluer away from host | bluest at tip, reddening toward host |
+
+Applying the ADR-0007 selection window to the field leaves **exactly one** candidate.
+
+Three things were learned that changed the design:
+
+1. The published coordinate is the **host galaxy at one end** of the wake, not its centre.
+   It sits 0.11″ off the recovered axis — essentially exactly on it.
+2. HAP single-visit mosaics are **not in the cloud** for this visit; standard association
+   products are ([ADR-0003 amendment](../adr/0003-search-plane-drizzled-mosaics.md)).
+3. Hysteresis alone does not keep a knotty feature intact, which produced
+   [ADR-0016](../adr/0016-rejoin-collinear-fragments.md).
 
 ---
 

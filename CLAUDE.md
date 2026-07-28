@@ -36,3 +36,21 @@ current deliverable and the code is a scaffold.
   provenance recorded.
 - Determinism is a hard requirement: no wall-clock, no unseeded RNG, no unsorted directory
   iteration in anything that affects a result (ADR-0012).
+- **Python sources stay pure ASCII.** PowerShell 5.1 on this machine reads files as ANSI
+  and writes UTF-8-with-BOM, so any `Get-Content | Set-Content` round-trip silently
+  corrupts em-dashes and smart quotes. Use the Edit tool for source files, never a shell
+  round-trip. Markdown keeps its typography because it is never round-tripped.
+
+## Module layout
+
+| Module | Role |
+|---|---|
+| `tile.py` | The normalised image unit: bands, weights, WCS, zero points. Nothing downstream knows which telescope produced the pixels. |
+| `detect.py` | Stage 2 primitive: ridge filter, noise normalisation, hysteresis thresholding. |
+| `linking.py` | Stage 2b primitive: rejoin collinear fragments (ADR-0016). |
+| `pipeline.py` | Composes detect + linking. Kept separate so neither primitive imports the other. |
+| `morphology.py` | Stage 3: length, width, axis ratio, position angle, straightness. |
+| `colour.py` | Colour gradient along a feature's axis. |
+| `geometry.py` | Shared principal-axis maths, so the three above need not import each other. |
+| `fetch.py` | The **only** module that touches the network. |
+| `tileio.py` | RICE-compressed FITS read/write. |

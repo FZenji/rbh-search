@@ -31,6 +31,60 @@ class ReferenceObject(BaseModel):
     colour_ab: float = Field(description="Integrated colour across `discovery_filters`.")
 
 
+class LitmusExpectation(BaseModel):
+    """What this pipeline measures when it recovers RBH-1 from the committed fixture.
+
+    These are **our** numbers, not the literature's - they describe pipeline output and
+    are expected to move when the detector legitimately improves. :data:`RBH1` holds the
+    published values and must not move at all. The two are kept apart deliberately so a
+    change to one can never be mistaken for a change to the other.
+
+    Tolerances are wide enough to survive library version drift and tight enough that a
+    real regression in the detector fails the build (ADR-0010).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    length_arcsec: float = Field(description="Recovered length of the bright section.")
+    length_tolerance: float = Field(gt=0.0)
+    width_arcsec: float = Field(description="Recovered FWHM transverse width.")
+    width_tolerance: float = Field(gt=0.0)
+    position_angle_deg: float = Field(description="Recovered position angle, N through E.")
+    position_angle_tolerance: float = Field(gt=0.0)
+    min_axis_ratio: float = Field(gt=1.0)
+    max_straightness_arcsec: float = Field(gt=0.0)
+    min_peak_snr: float = Field(gt=0.0)
+    max_axis_offset_arcsec: float = Field(
+        gt=0.0,
+        description="How far the published coordinate may sit off the recovered axis. "
+        "It marks the host galaxy at one end, so it lies along the feature's line "
+        "rather than at its centre.",
+    )
+    full_extent_arcsec: float = Field(
+        description="Published coordinate to far endpoint; compare with RBH1.length_arcsec."
+    )
+    full_extent_tolerance: float = Field(gt=0.0)
+    min_colour_gradient_significance: float = Field(
+        gt=0.0, description="Required significance of the colour gradient along the axis."
+    )
+
+
+class FixtureSpec(BaseModel):
+    """How the committed litmus fixture is cut out of the archive.
+
+    Pinned so that regenerating the fixture reproduces byte-comparable pixels
+    (ADR-0012). The centre is the midpoint of the feature's full extent rather than the
+    published coordinate, which sits at one end of it, so the cutout has even margin.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    observation_ids: tuple[str, ...] = Field(description="MAST observation IDs to draw from.")
+    centre_ra_deg: float = Field(ge=0.0, lt=360.0)
+    centre_dec_deg: float = Field(ge=-90.0, le=90.0)
+    half_size_pixels: int = Field(gt=0, description="Half-width of the square cutout.")
+
+
 #: The one confirmed runaway SMBH wake. van Dokkum et al. 2023 (ApJL 946, L50) for the
 #: photometry and geometry; van Dokkum et al. 2026 (ApJL) for the JWST bow-shock
 #: confirmation. Coordinates are J2000 02h41m45.43s -08d20m55.4s.
@@ -46,4 +100,40 @@ RBH1: Final[ReferenceObject] = ReferenceObject(
     total_mag_ab=22.87,
     total_mag_filter="F814W",
     colour_ab=0.83,
+)
+
+#: Cutout specification for the committed litmus fixture. The centre is the midpoint
+#: between the feature's far endpoint and the published coordinate, which measurement
+#: showed lies on the feature's own axis (perpendicular offset 0.12 arcsec) at one end
+#: rather than at its centre.
+RBH1_FIXTURE: Final[FixtureSpec] = FixtureSpec(
+    observation_ids=(
+        "hst_16912_02_acs_wfc_f606w_jety02",
+        "hst_16912_02_acs_wfc_f814w_jety02",
+    ),
+    centre_ra_deg=40.439896,
+    centre_dec_deg=-8.349665,
+    half_size_pixels=200,
+)
+
+#: Pipeline recovery of RBH-1 from :data:`RBH1_FIXTURE`, first measured 2026-07-28.
+#: The detector reaches the bright inner 5.5 arcsec of the feature; extending from the
+#: published host-galaxy coordinate to the far endpoint gives 8.1 arcsec, against the
+#: published 7.8 arcsec. The colour gradient is negative from endpoint A (host side)
+#: toward endpoint B, i.e. the feature is bluest at the far tip and reddens toward the
+#: host -- the sense reported by van Dokkum et al.
+RBH1_LITMUS: Final[LitmusExpectation] = LitmusExpectation(
+    length_arcsec=5.50,
+    length_tolerance=0.60,
+    width_arcsec=0.274,
+    width_tolerance=0.080,
+    position_angle_deg=148.3,
+    position_angle_tolerance=5.0,
+    min_axis_ratio=12.0,
+    max_straightness_arcsec=0.12,
+    min_peak_snr=8.0,
+    max_axis_offset_arcsec=0.50,
+    full_extent_arcsec=8.10,
+    full_extent_tolerance=1.00,
+    min_colour_gradient_significance=1.5,
 )

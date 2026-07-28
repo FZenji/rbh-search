@@ -33,6 +33,11 @@ rewritten**.
 | [0013](0013-survey-agnostic-io.md) | Abstract the I/O layer for Euclid and Roman | Accepted |
 | [0014](0014-output-data-model.md) | Output data model and formats | Accepted |
 | [0015](0015-no-discovery-claims.md) | Publish candidates, never discoveries | Accepted |
+| [0016](0016-rejoin-collinear-fragments.md) | Rejoin collinear fragments rather than tuning the threshold | Accepted |
+
+ADR-0003 and ADR-0005 carry **amendments** added during Phase 1, recording where
+implementation contradicted an assumption. Amendments correct the Context and are appended
+below the original text; the Decision sections are untouched.
 
 ## Format
 

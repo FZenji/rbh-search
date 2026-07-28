@@ -16,13 +16,17 @@ importantly — puts a number on how many we would have found if they were there
 
 ## Where we are right now
 
-**Phase 0 of 6: complete.** The project is set up, all 15 decisions are documented, and
-every quality check passes. **There is no working detector yet** — that is deliberate; the
-plan was agreed before any code was written.
+**Phases 0 and 1 of 6: complete.**
 
-**Phase 1 is next:** fetch the original RBH-1 discovery image, write the streak-finder, and
-get it to find RBH-1 automatically. Nothing else is worth building until that works. Full
-phase list in the [roadmap](docs/design/roadmap.md).
+The detector works and **finds RBH-1 automatically** in its original discovery image,
+offline, on every commit. It recovers the wake as a single 5.50″ feature with axis ratio
+20; measuring from the published host-galaxy coordinate to the far end gives **8.10″
+against the published 7.8″**. Applying the selection window to that field leaves exactly
+one candidate — the right one.
+
+**Phase 2 is next:** injection–recovery. Paste synthetic wakes into real images and measure
+what fraction we find, which is what turns a search into a measurement. Full phase list in
+the [roadmap](docs/design/roadmap.md).
 
 To read all the documentation as a proper website with search and navigation:
 

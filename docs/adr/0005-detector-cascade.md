@@ -44,6 +44,21 @@ about the candidate.
 positives, and even then it must be validated against held-out truth and must not replace
 the interpretable cascade — it may only re-rank within it.
 
+## Amendment, 2026-07-28 (Phase 1)
+
+Two findings from implementing the primary sweep:
+
+1. **The response normalisation matters as much as the filter.** A median absolute
+   deviation was used first to set the threshold scale, on the reasoning that it is more
+   robust than a standard deviation. It is wrong here: the Meijering response is
+   positive-definite and strongly right-skewed, so its MAD came out ~35% *larger* than the
+   sigma-clipped standard deviation, silently making every nominal threshold stricter than
+   it claimed to be. Iterative sigma clipping is used instead, which rejects the
+   real-ridge tail rather than being inflated by it.
+2. **Hysteresis alone is not enough** to keep a knotty feature intact. It moves the
+   fragmentation threshold without removing it, so explicit collinear fragment linking was
+   added — see [ADR-0016](0016-rejoin-collinear-fragments.md).
+
 ## Consequences
 
 - Both detectors are off-the-shelf, tested implementations (`skimage`, `acstools`), so

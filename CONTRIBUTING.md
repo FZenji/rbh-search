@@ -48,6 +48,14 @@ Copy the structure of an existing one. Number sequentially. Status is `Proposed`
 of an Accepted ADR** — supersede it with a new one instead, so the reasoning chain that
 produced a published catalogue stays legible.
 
+## Encoding
+
+**Python sources are pure ASCII.** Use `-` rather than an em-dash in code and docstrings.
+PowerShell 5.1 reads files as ANSI and writes UTF-8-with-BOM, so a single
+`Get-Content | Set-Content` round-trip corrupts every non-ASCII character in a file. Since
+this project is developed on Windows, keeping sources ASCII removes the hazard entirely.
+Markdown files are exempt — they are never round-tripped through a shell.
+
 ## Data hygiene
 
 Nothing under `data/` or `runs/` is committed. Test fixtures live in `tests/data/` and

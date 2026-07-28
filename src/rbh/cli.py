@@ -7,12 +7,14 @@ yet; this exposes only the introspection commands needed to verify a deployment.
 from __future__ import annotations
 
 import json
+from pathlib import Path
+from typing import Annotated
 
 import typer
 
 from rbh import __version__
 from rbh.config import Settings
-from rbh.reference import RBH1
+from rbh.reference import RBH1, RBH1_FIXTURE
 
 app = typer.Typer(
     name="rbh",
@@ -41,3 +43,39 @@ def config() -> None:
 def reference() -> None:
     """Print the reference object the pipeline is calibrated against."""
     typer.echo(json.dumps(RBH1.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+@app.command("fetch-fixture")
+def fetch_fixture(
+    out: Annotated[
+        Path,
+        typer.Option(help="Destination FITS path for the regenerated fixture."),
+    ] = Path("tests/data/rbh1_acs_f606w_f814w.fits"),
+) -> None:
+    """Regenerate the committed RBH-1 litmus fixture from the MAST cloud archive.
+
+    Requires network access. The fixture is committed, so this only needs re-running if
+    the archive reprocesses the discovery data.
+    """
+    from rbh.fetch import fetch_tile, find_drizzled_products
+    from rbh.tileio import write_tile
+
+    typer.echo(f"resolving cloud products for {RBH1_FIXTURE.observation_ids}")
+    uris = find_drizzled_products(RBH1_FIXTURE.observation_ids)
+    if not uris:
+        typer.echo("no drizzled products resolved in the cloud", err=True)
+        raise typer.Exit(1)
+    for uri in uris:
+        typer.echo(f"  {uri}")
+
+    tile = fetch_tile(
+        RBH1_FIXTURE.centre_ra_deg,
+        RBH1_FIXTURE.centre_dec_deg,
+        uris,
+        half_size_pixels=RBH1_FIXTURE.half_size_pixels,
+        proposal_id=RBH1.discovery_proposal_id,
+    )
+    out.parent.mkdir(parents=True, exist_ok=True)
+    write_tile(tile, out)
+    size_kb = out.stat().st_size / 1024
+    typer.echo(f"wrote {out} ({size_kb:.0f} KB), bands={tile.filter_names}, tier={tile.tier}")
