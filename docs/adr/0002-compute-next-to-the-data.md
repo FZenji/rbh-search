@@ -2,6 +2,11 @@
 
 **Status:** Accepted
 
+**In plain terms:** There are tens of terabytes of images and we have to look at all of
+them, so we can't download them. Instead we send our program to a free NASA computer that
+sits right next to the data. But we still build and test on your laptop with a few small
+saved images, because waiting on a cloud server for every code change would be miserable.
+
 ## Context
 
 The v1 corpus ([ADR-0001](0001-search-the-full-archive.md)) is tens of terabytes and every

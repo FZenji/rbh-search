@@ -4,8 +4,8 @@ message: "If you use this software or its candidate catalogue, please cite it."
 type: software
 authors:
   - family-names: Tolenaar
-    given-names: Boye
-repository-code: "https://github.com/latteral/rbh-search"
+    given-names: Henry
+repository-code: "https://github.com/FZenji/rbh-search"
 license: BSD-3-Clause
 version: 0.1.0
 abstract: >-

@@ -3,6 +3,11 @@
 A reproducible search for **runaway supermassive black hole (RBH) wakes** in the public
 HST and JWST imaging archives.
 
+!!! tip "New to this?"
+    Read **[Start here](start-here.md)** instead of this page. It covers the same ground in
+    plain English with no astronomy background assumed, and explains every decision we've
+    made. The **[Glossary](glossary.md)** defines all the jargon.
+
 ## The premise
 
 A supermassive black hole ejected from its host galaxy — most plausibly by gravitational
@@ -42,7 +47,9 @@ directly predicts how many Euclid DR1 should find.
 
 ## Where to start
 
-- New to the science? → [RBH-1 dossier](science/rbh-1-dossier.md)
+- **New to any of this? → [Start here](start-here.md)**
+- Need a term defined? → [Glossary](glossary.md)
+- Want the published measurements? → [RBH-1 dossier](science/rbh-1-dossier.md)
 - Want to know what the detector looks for? → [Target signature](science/target-signature.md)
 - Want to know why it is built this way? → [ADR index](adr/README.md)
 - Want to build it? → [Architecture](design/architecture.md), then

@@ -2,6 +2,12 @@
 
 **Status:** Accepted
 
+**In plain terms:** We use two completely different streak-finding methods. The fast one
+(borrowed from medical imaging, where it finds blood vessels) scans everything. The second,
+independent one (NASA's satellite-trail finder) only checks the survivors, so it costs
+almost nothing but gives us a genuine second opinion. No machine learning yet — with only
+one real example, there's nothing to learn from.
+
 ## Context
 
 Candidate detection algorithms, assessed against the actual target — a ~2–25″ long,

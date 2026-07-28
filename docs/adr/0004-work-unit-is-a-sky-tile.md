@@ -2,6 +2,11 @@
 
 **Status:** Accepted
 
+**In plain terms:** Rather than processing one image file at a time, we chop the sky into
+equal squares and process those. Files overlap each other and vary enormously in size;
+squares don't. This also means we never search the same patch of sky twice, and we can say
+exactly how much sky we covered — a number we need for everything else.
+
 ## Context
 
 The obvious work unit is "one file". It is also wrong, for four reasons:

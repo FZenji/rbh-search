@@ -1,5 +1,10 @@
 # Architectural Decision Records
 
+An **ADR** is a short document recording one decision: what we chose, why, and what it
+costs us. Each one below opens with an **"In plain terms"** summary, so you can get the
+gist without the jargon. For all 15 in one place, see the table at the end of
+[Start here](../start-here.md).
+
 Every decision that shapes what this pipeline finds — and therefore what its catalogue
 means — is recorded here before it is implemented.
 

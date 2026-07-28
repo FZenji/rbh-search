@@ -2,6 +2,11 @@
 
 **Status:** Accepted
 
+**In plain terms:** We write down, in one file, exactly what sizes and shapes we're hunting
+for — how long, how thin, how straight. If those numbers were scattered through the code,
+nobody could tell what our search would have missed. Being able to state that clearly is
+half the scientific value of the project.
+
 ## Context
 
 Every threshold in a search pipeline is a claim about what the pipeline can and cannot

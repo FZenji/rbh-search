@@ -9,7 +9,6 @@ description = "A reproducible search for runaway supermassive black hole wakes i
 readme = "README.md"
 license = "BSD-3-Clause"
 requires-python = ">=3.12"
-authors = [{ name = "Boye Tolenaar" }]
 keywords = [
     "astronomy",
     "black-holes",
@@ -53,9 +52,9 @@ mrt = ["acstools>=3.7"]
 cluster = ["dask[distributed]>=2024.12"]
 
 [project.urls]
-Homepage = "https://github.com/latteral/rbh-search"
-Documentation = "https://github.com/latteral/rbh-search/tree/main/docs"
-Issues = "https://github.com/latteral/rbh-search/issues"
+Homepage = "https://github.com/FZenji/rbh-search"
+Documentation = "https://github.com/FZenji/rbh-search/tree/main/docs"
+Issues = "https://github.com/FZenji/rbh-search/issues"
 
 [project.scripts]
 rbh = "rbh.cli:app"

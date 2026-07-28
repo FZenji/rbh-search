@@ -2,6 +2,13 @@
 
 **Status:** Accepted
 
+**In plain terms:** Instead of a rule that says "reject this, keep that", we measure lots of
+properties and give each candidate a score. Why? Because expert astronomers argued for
+three years over whether RBH-1 was a black hole wake or an edge-on galaxy, using better
+data than we'll have. We're not going to settle that with a threshold. So we keep
+everything, record every measurement, and rank — which also means someone who disagrees
+with our ranking can redo it without re-running the whole search.
+
 ## Context
 
 The dominant astrophysical contaminant is the **bulgeless edge-on disk galaxy**. This is

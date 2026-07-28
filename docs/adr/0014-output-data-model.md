@@ -2,6 +2,11 @@
 
 **Status:** Accepted
 
+**In plain terms:** Decides what file formats the results go in and — more interestingly —
+that we keep a record of the things we *rejected*, not just the ones we kept. "Why was this
+thrown out?" turns out to be the question people ask most often, and you can only answer it
+if you wrote the rejects down.
+
 ## Context
 
 Outputs need to serve four consumers with genuinely different needs: a worker writing

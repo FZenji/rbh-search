@@ -2,6 +2,10 @@
 
 **Status:** Accepted
 
+**In plain terms:** RBH-1 was easy to spot in a short, ordinary exposure. So we don't need
+the famous long-exposure "deep field" images — we need *lots* of images. Searching only the
+deep fields would throw away about 90% of our available sky for no benefit.
+
 ## Context
 
 The instinct when hunting faint extragalactic structure is to go to the deep fields. That

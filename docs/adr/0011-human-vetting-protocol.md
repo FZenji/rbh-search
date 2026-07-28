@@ -2,6 +2,12 @@
 
 **Status:** Accepted
 
+**In plain terms:** The last step is a person looking at pictures — probably you. People get
+tired and start missing things after a few hundred boring images, so we measure that too:
+fake wakes get mixed secretly into your review queue, and we track how many you catch. We
+also set how many images you have to review based on how many you'll realistically look at
+carefully, rather than picking a number out of the air.
+
 ## Context
 
 The last stage of every candidate search is a person looking at pictures. It is usually

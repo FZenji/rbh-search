@@ -2,6 +2,12 @@
 
 **Status:** Accepted
 
+**In plain terms:** An automatic check runs every time we change the code, confirming we
+can still find RBH-1 in its original discovery image. This guards against a sneaky failure:
+when you tune a search, you naturally drift toward stricter settings because they produce a
+tidier list of results — and you can easily tune until the program can no longer find the
+one real example it was built to find.
+
 ## Context
 
 We have exactly one known positive. It is the only empirical check that the pipeline

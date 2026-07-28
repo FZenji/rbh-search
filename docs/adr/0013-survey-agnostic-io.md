@@ -2,6 +2,12 @@
 
 **Status:** Accepted
 
+**In plain terms:** All the telescope-specific details — pixel sizes, filter names, file
+layouts — live in one isolated part of the code. Everything else just sees "an image".
+That way, pointing this at Euclid's 1,900 square degrees in October is a small job instead
+of starting over. Euclid is where we actually expect to find something; Hubble is where we
+prove the method works.
+
 ## Context
 
 The HST + JWST archive gives us ~15–20 deg². That is where the one known positive lives,

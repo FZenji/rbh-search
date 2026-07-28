@@ -2,6 +2,12 @@
 
 **Status:** Accepted
 
+**In plain terms:** Telescopes take several photos of the same spot and combine them. Real
+things in space appear in every photo; cosmic rays and satellites appear in only one, so
+the combining software already throws them out. By searching the combined images instead of
+the raw ones, we get most of our glitch-removal for free. Best value decision in the
+project.
+
 ## Context
 
 The search could operate on individual calibrated exposures (`flt`/`flc`, `cal`) or on

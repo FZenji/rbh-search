@@ -2,6 +2,12 @@
 
 **Status:** Accepted
 
+**In plain terms:** Images taken in two or more colours are far more useful, because colour
+is both our best glitch test (a glitch rarely shows up in both colours) and our best galaxy
+test. So we search those first and call them Tier A. Single-colour images still get
+searched, but they go in a separate, lower-confidence list rather than being quietly mixed
+in.
+
 ## Context
 
 The very first thing that saved RBH-1 from the bin was that it appeared in **both** F606W

@@ -2,6 +2,12 @@
 
 **Status:** Accepted
 
+**In plain terms:** We secretly paste realistic fake wakes into the real telescope images,
+then see how many our program finds. If we hide 1,000 and it finds 700, we know it catches
+about 70% of what's really out there. That single number is what turns "we found nothing"
+from a shrug into a real scientific result: *"there are fewer than X of these per patch of
+sky."* This is the most important decision in the project.
+
 ## Context
 
 The likely outcome of this search is **zero confirmed detections**. The archive is small

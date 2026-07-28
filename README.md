@@ -9,8 +9,26 @@ confirmed in 2026 by JWST/NIRSpec detection of its supersonic bow shock. This pr
 asks whether there are others hiding in thirty years of archival pixels, and — just as
 importantly — puts a number on how many we would have found if they were there.
 
-> **Status: design phase.** No detector is implemented yet. The documentation in
-> [`docs/`](docs/) is the current deliverable and is complete; the code is a scaffold.
+> **New here? Read [docs/start-here.md](docs/start-here.md) first.** It explains the whole
+> project in plain English with no astronomy background assumed, including what every
+> decision means and where to find things. The [glossary](docs/glossary.md) defines every
+> piece of jargon used anywhere in this repo.
+
+## Where we are right now
+
+**Phase 0 of 6: complete.** The project is set up, all 15 decisions are documented, and
+every quality check passes. **There is no working detector yet** — that is deliberate; the
+plan was agreed before any code was written.
+
+**Phase 1 is next:** fetch the original RBH-1 discovery image, write the streak-finder, and
+get it to find RBH-1 automatically. Nothing else is worth building until that works. Full
+phase list in the [roadmap](docs/design/roadmap.md).
+
+To read all the documentation as a proper website with search and navigation:
+
+```bash
+uv run mkdocs serve      # then open http://127.0.0.1:8000
+```
 
 ---
 
@@ -43,6 +61,9 @@ project, not detecting the streaks.
 
 | | |
 |---|---|
+| **Orientation** | |
+| [**Start here**](docs/start-here.md) | The whole project in plain English — no background assumed |
+| [Glossary](docs/glossary.md) | Every term defined |
 | **Science** | |
 | [RBH-1 dossier](docs/science/rbh-1-dossier.md) | Everything measured about the one known object, with sources |
 | [Target signature](docs/science/target-signature.md) | The observables the pipeline searches for, and their numeric ranges |

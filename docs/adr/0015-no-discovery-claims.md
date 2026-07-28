@@ -2,6 +2,12 @@
 
 **Status:** Accepted
 
+**In plain terms:** We produce a list of *candidates worth a closer look*, never a claim
+that we've found a runaway black hole. Confirming one requires a spectrograph — an
+instrument that splits light apart to reveal how fast things are moving — and we don't have
+one. Pictures alone weren't enough for the experts arguing over RBH-1 for three years, and
+they won't be enough for us either.
+
 ## Context
 
 The history of RBH-1 is unambiguous on this point.

@@ -1,6 +1,6 @@
 site_name: rbh-search
 site_description: A reproducible search for runaway supermassive black hole wakes in HST and JWST imaging.
-repo_url: https://github.com/latteral/rbh-search
+repo_url: https://github.com/FZenji/rbh-search
 edit_uri: ""
 
 theme:
@@ -34,6 +34,8 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Start here (plain English): start-here.md
+  - Glossary: glossary.md
   - Science:
       - RBH-1 dossier: science/rbh-1-dossier.md
       - Target signature: science/target-signature.md

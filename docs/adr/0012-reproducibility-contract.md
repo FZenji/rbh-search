@@ -2,6 +2,12 @@
 
 **Status:** Accepted
 
+**In plain terms:** Run the program twice on the same data and you must get *exactly* the
+same answer. Every result records which image file, which settings and which version of the
+code produced it. This sounds pedantic, but if we ever flag something interesting, every
+decision behind it will be picked apart — and "I'm not sure what settings I used" would end
+the conversation.
+
 ## Context
 
 A candidate catalogue is a scientific claim, and its value depends entirely on whether
