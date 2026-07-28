@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+site/
+
+# Local data corpus and run outputs (see ADR-0002, ADR-0014).
+# Nothing under these paths is ever committed; they are reconstructible from
+# the manifest plus the code version recorded in each run's provenance record.
+# Root-anchored so that tests/data/ (committed CI fixtures, ADR-0010) survives.
+/data/
+/runs/
+*.fits
+*.fits.gz
+!tests/data/**/*.fits
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

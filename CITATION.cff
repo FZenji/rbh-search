@@ -1,0 +1,44 @@
+cff-version: 1.2.0
+title: "rbh-search: a reproducible search for runaway supermassive black hole wakes"
+message: "If you use this software or its candidate catalogue, please cite it."
+type: software
+authors:
+  - family-names: Tolenaar
+    given-names: Boye
+repository-code: "https://github.com/latteral/rbh-search"
+license: BSD-3-Clause
+version: 0.1.0
+abstract: >-
+  A survey-agnostic, reproducible pipeline that searches public HST and JWST
+  imaging for thin, linear, star-forming features of the kind produced by a
+  runaway supermassive black hole ploughing through the circumgalactic medium.
+  The pipeline is calibrated against the one confirmed example, RBH-1, and
+  reports a measured selection function alongside its candidate list so that a
+  null result constitutes a quantitative upper limit.
+keywords:
+  - astronomy
+  - supermassive black holes
+  - gravitational wave recoil
+  - Hubble Space Telescope
+  - James Webb Space Telescope
+references:
+  - type: article
+    authors:
+      - family-names: van Dokkum
+        given-names: Pieter
+    title: >-
+      A Candidate Runaway Supermassive Black Hole Identified by Shocks and Star
+      Formation in its Wake
+    journal: The Astrophysical Journal Letters
+    year: 2023
+    doi: 10.3847/2041-8213/acba86
+  - type: article
+    authors:
+      - family-names: van Dokkum
+        given-names: Pieter
+    title: >-
+      JWST Confirmation of a Runaway Supermassive Black Hole via Its Supersonic
+      Bow Shock
+    journal: The Astrophysical Journal Letters
+    year: 2026
+    doi: 10.3847/2041-8213/ae3d0e

@@ -1,0 +1,8 @@
+# Normalise line endings so a Windows workstation and a Linux cloud worker see
+# byte-identical files. Reproducibility starts here (ADR-0012).
+* text=auto eol=lf
+
+# Binary CI fixtures (ADR-0010) must never be munged.
+*.fits binary
+*.png binary
+*.jpg binary

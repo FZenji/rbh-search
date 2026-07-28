@@ -1,0 +1,62 @@
+site_name: rbh-search
+site_description: A reproducible search for runaway supermassive black hole wakes in HST and JWST imaging.
+repo_url: https://github.com/latteral/rbh-search
+edit_uri: ""
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - navigation.sections
+    - navigation.top
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - footnotes
+  - tables
+  - pymdownx.details
+  - pymdownx.superfences
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Science:
+      - RBH-1 dossier: science/rbh-1-dossier.md
+      - Target signature: science/target-signature.md
+      - False positives: science/false-positives.md
+  - Design:
+      - Architecture: design/architecture.md
+      - Data sources: design/data-sources.md
+      - Validation: design/validation.md
+      - Roadmap: design/roadmap.md
+  - Decisions:
+      - Index: adr/README.md
+      - 0001 Search the full archive: adr/0001-search-the-full-archive.md
+      - 0002 Compute next to the data: adr/0002-compute-next-to-the-data.md
+      - 0003 Search plane is drizzled mosaics: adr/0003-search-plane-drizzled-mosaics.md
+      - 0004 Work unit is a sky tile: adr/0004-work-unit-is-a-sky-tile.md
+      - 0005 Detector cascade: adr/0005-detector-cascade.md
+      - 0006 Two-tier filter requirement: adr/0006-two-tier-filter-requirement.md
+      - 0007 Target selection window: adr/0007-target-selection-window.md
+      - 0008 Scored discriminants: adr/0008-scored-discriminants-not-cuts.md
+      - 0009 Injection-recovery: adr/0009-injection-recovery.md
+      - 0010 RBH-1 regression test: adr/0010-rbh1-regression-test.md
+      - 0011 Human vetting protocol: adr/0011-human-vetting-protocol.md
+      - 0012 Reproducibility contract: adr/0012-reproducibility-contract.md
+      - 0013 Survey-agnostic IO: adr/0013-survey-agnostic-io.md
+      - 0014 Output data model: adr/0014-output-data-model.md
+      - 0015 No discovery claims: adr/0015-no-discovery-claims.md

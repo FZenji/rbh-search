@@ -1,0 +1,171 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rbh-search"
+version = "0.1.0"
+description = "A reproducible search for runaway supermassive black hole wakes in public HST and JWST imaging."
+readme = "README.md"
+license = "BSD-3-Clause"
+requires-python = ">=3.12"
+authors = [{ name = "Boye Tolenaar" }]
+keywords = [
+    "astronomy",
+    "black-holes",
+    "hubble",
+    "jwst",
+    "image-processing",
+    "survey",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "astropy>=6.1",
+    "numpy>=2.0",
+    "scipy>=1.14",
+    "scikit-image>=0.24",
+    "photutils>=2.0",
+    "astroquery>=0.4.10",
+    "fsspec>=2024.10",
+    "s3fs>=2024.10",
+    "pyarrow>=18.0",
+    "mocpy>=0.16",
+    "typer>=0.15",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "structlog>=24.4",
+    "matplotlib>=3.9",
+]
+
+[project.optional-dependencies]
+# Median Radon Transform cross-check detector (STScI). Kept optional because it
+# pulls the full ACS calibration stack, which we do not need for the primary sweep.
+mrt = ["acstools>=3.7"]
+# Distributed execution on the Fornax Science Console.
+cluster = ["dask[distributed]>=2024.12"]
+
+[project.urls]
+Homepage = "https://github.com/latteral/rbh-search"
+Documentation = "https://github.com/latteral/rbh-search/tree/main/docs"
+Issues = "https://github.com/latteral/rbh-search/issues"
+
+[project.scripts]
+rbh = "rbh.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "hypothesis>=6.120",
+    "mypy>=1.13",
+    "ruff>=0.8",
+    "pre-commit>=4.0",
+]
+docs = [
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.27",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rbh"]
+
+# ---------------------------------------------------------------------------
+# Ruff
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "A",    # flake8-builtins
+    "ANN",  # flake8-annotations
+    "ARG",  # flake8-unused-arguments
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "D",    # pydocstyle
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "NPY",  # numpy-specific rules
+    "PERF", # perflint
+    "PL",   # pylint
+    "PT",   # flake8-pytest-style
+    "PTH",  # flake8-use-pathlib
+    "RET",  # flake8-return
+    "RUF",  # ruff-specific rules
+    "SIM",  # flake8-simplify
+    "T20",  # flake8-print
+    "TID",  # flake8-tidy-imports
+    "UP",   # pyupgrade
+    "W",    # pycodestyle warnings
+]
+ignore = [
+    "D107", # missing docstring in __init__ (covered by class docstring)
+    "D203", # incompatible with D211
+    "D213", # incompatible with D212
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["ANN", "D", "PLR2004", "S101"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+# ---------------------------------------------------------------------------
+# mypy
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+pretty = true
+files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = [
+    "astropy.*",
+    "astroquery.*",
+    "acstools.*",
+    "mocpy.*",
+    "photutils.*",
+    "skimage.*",
+    "s3fs.*",
+]
+ignore_missing_imports = true
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=rbh",
+    "--cov-report=term-missing",
+]
+testpaths = ["tests"]
+markers = [
+    "network: test requires network access to MAST/AWS (deselect with '-m \"not network\"')",
+    "slow: test takes more than a few seconds",
+    "litmus: RBH-1 recovery regression test (see ADR-0010)",
+]
+filterwarnings = ["error"]
+
+[tool.coverage.report]
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]
