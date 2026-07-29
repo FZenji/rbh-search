@@ -56,6 +56,21 @@ Design requirements:
 - Realism is validated by round-tripping: an injected RBH-1 analogue must recover the same
   measured parameters as the real one.
 
+### Are the synthetics representative?
+
+This is the load-bearing assumption of the whole result, and it has a known direction of
+failure: **a modelled wake is smoother than a real one.** Real wakes are chains of clumps —
+which is exactly why RBH-1 fragments at a 4-sigma cut. A smooth synthetic never fragments,
+so it never pays the linking penalty, so it reports a completeness no real wake could
+achieve, so the derived limit comes out too tight and we overclaim.
+
+The answer is to stop modelling the source: the **primary injected object is RBH-1's own
+transplanted pixels**, with the parametric generator validated against it rather than
+trusted on its own, and completeness reported as a function of clumpiness rather than at one
+assumed value. Full reasoning, including the noise-compensation recipe for rescaled
+transplants and the blind human-discrimination check, is in
+[ADR-0017](../adr/0017-synthetic-realism.md).
+
 ## 3. Negative controls
 
 Independent measures of the false-positive rate, each attacking a different failure mode.

@@ -52,6 +52,12 @@ Mechanics:
 the same measured parameters as the real RBH-1. If the generator cannot reproduce the one
 object we have, its completeness numbers are fiction.
 
+**How realism is actually established** is the subject of
+[ADR-0017](0017-synthetic-realism.md), written after Phase 1 showed that real wakes
+fragment and modelled ones would not. In short: the primary injected source is RBH-1's own
+transplanted pixels, and the parametric generator is validated against it rather than
+trusted on its own.
+
 The selection function is **shipped with the catalogue** as a first-class data product,
 alongside the survey MOC, so that anyone can derive a density limit independently.
 

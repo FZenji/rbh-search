@@ -45,6 +45,47 @@ def reference() -> None:
     typer.echo(json.dumps(RBH1.model_dump(mode="json"), indent=2, sort_keys=True))
 
 
+@app.command()
+def inspect(
+    tile_path: Annotated[
+        Path,
+        typer.Argument(help="Tile FITS file to inspect."),
+    ] = Path("tests/data/rbh1_acs_f606w_f814w.fits"),
+    out: Annotated[
+        Path,
+        typer.Option(help="Where to write the diagnostic image."),
+    ] = Path("inspect.png"),
+    low_snr: Annotated[float, typer.Option(help="Connectivity threshold.")] = 3.0,
+    high_snr: Annotated[float, typer.Option(help="Seed threshold.")] = 5.0,
+    mark_reference: Annotated[
+        bool,
+        typer.Option(help="Mark the published RBH-1 coordinate on the panels."),
+    ] = True,
+) -> None:
+    """Render every stage of the detector for a tile, so you can see what it is doing.
+
+    Produces a seven-panel figure: the raw filters, the combined image, the ridge-filter
+    response, the threshold decisions, the fragments before and after stitching, and the
+    measured geometry with the colour profile.
+    """
+    from astropy.coordinates import SkyCoord
+
+    from rbh.diagnostics import save_stages
+    from rbh.tileio import read_tile
+
+    tile = read_tile(tile_path)
+    mark = SkyCoord(RBH1.ra_deg, RBH1.dec_deg, unit="deg") if mark_reference else None
+    save_stages(
+        tile,
+        out,
+        low_snr=low_snr,
+        high_snr=high_snr,
+        mark=mark,
+        title=f"{tile_path.name}  |  {' + '.join(tile.filter_names)}  |  tier {tile.tier}",
+    )
+    typer.echo(f"wrote {out} ({out.stat().st_size / 1024:.0f} KB)")
+
+
 @app.command("fetch-fixture")
 def fetch_fixture(
     out: Annotated[

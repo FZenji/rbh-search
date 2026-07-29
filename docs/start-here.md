@@ -218,6 +218,7 @@ Full reasoning for each is one click away.
 | [0014](adr/0014-output-data-model.md) | Fixed output formats and what we keep | Including keeping the *rejects*, because "why was this thrown out?" is the question people actually ask. |
 | [0015](adr/0015-no-discovery-claims.md) | We produce candidates, never discoveries | Confirming one needs a spectrograph, which we don't have. Pictures alone were not enough for the experts and won't be enough for us. |
 | [0016](adr/0016-rejoin-collinear-fragments.md) | Stitch broken-up streaks back together | A wake is a chain of clumps, so any cutoff strict enough to reject noise snips the faint bits between them. Better to rejoin the pieces than to tune the cutoff to a knife edge. |
+| [0017](adr/0017-synthetic-realism.md) | Use the real RBH-1 pixels as the fake, not a formula | A wake drawn from a formula is smoother than a real one, and smooth things are easier to find — so it would flatter us. Cut out the real object and paste it elsewhere instead. |
 
 ---
 
@@ -249,6 +250,21 @@ RBH/
 ├── src/rbh/               ← the program (currently just a skeleton)
 └── tests/                 ← automatic checks
 ```
+
+### Seeing what the detector is doing
+
+This is the one to try first. It draws every stage of the search for a given image —
+what the telescope saw, the ridge filter, the threshold decisions, the fragments before
+and after stitching, and the measured numbers with the colour profile:
+
+```bash
+uv run rbh inspect                       # writes inspect.png for the RBH-1 fixture
+uv run rbh inspect --high-snr 6 --low-snr 4.2 --out strict.png
+```
+
+That second command uses a deliberately strict cutoff, which makes the streak break into
+three pieces — so you can watch the stitching step actually do its job. Point it at any
+tile file with `uv run rbh inspect path/to/tile.fits`.
 
 ### Checking the project is healthy
 

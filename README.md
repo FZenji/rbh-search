@@ -86,6 +86,12 @@ project, not detecting the streaks.
 uv sync --all-extras --group dev
 uv run rbh --help
 uv run pytest -m "not network"
+
+# See every stage of the detector on the RBH-1 discovery data
+uv run rbh inspect
+# The same, at a cutoff strict enough to fragment the feature, so you can
+# watch the stitching step put it back together
+uv run rbh inspect --low-snr 4.2 --high-snr 6 --out strict.png
 ```
 
 ## Contributing

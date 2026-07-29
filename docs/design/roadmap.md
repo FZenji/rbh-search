@@ -47,15 +47,29 @@ Three things were learned that changed the design:
 
 ## Phase 2 — Measurement
 
-Build the thing that makes the project scientific rather than anecdotal.
+Build the thing that makes the project scientific rather than anecdotal. Order matters
+here: the generator cannot be validated before the transplant exists
+([ADR-0017](../adr/0017-synthetic-realism.md)).
 
-- Synthetic wake generator, PSF-convolved, multi-band, parameterised.
-- Injection into real tiles, upstream of stage 2.
-- Completeness grid over (μ, L, W, inclination, depth, background).
-- Negative controls: noise, rotated tiles, known-artifact fields, labelled edge-on disks.
+1. **Transplant machinery.** Cut RBH-1 out — background-subtracted, neighbours masked,
+   template committed and inspected — and paste it into other real sky. Flux rescaling with
+   the `(1 − f²)σ²` noise compensation; rotation at 90° multiples; resampling for other
+   pixel scales.
+2. **Parametric generator**, PSF-convolved, multi-band, with **clumpiness as an explicit
+   parameter** since it controls fragmentation and therefore survival.
+3. **Validate the generator against the transplant**: at RBH-1's parameters it must
+   reproduce the transplant's fragmentation rate, measured width, peak S/N and colour
+   gradient — not merely its length.
+4. **Completeness grid** over (μ, L, W, inclination, depth, background, clumpiness),
+   separately per tier.
+5. **Negative controls**: noise realisations, rotated and mirrored tiles, known-artifact
+   fields, labelled edge-on disks as the discriminator's negative class.
+6. **Blind human discrimination check**: can a person tell synthetic cutouts from real
+   ones? If yes, the synthetics are not representative yet.
 
-**Gate:** a completeness surface that reproduces the *actual* recovery of the real RBH-1
-when an analogue is injected into the same field — the round-trip realism check.
+**Gate:** the parametric generator reproduces the transplant's recovery statistics at
+RBH-1's parameters, and the completeness grid is reported as a function of clumpiness rather
+than at one assumed value.
 
 ---
 
