@@ -54,3 +54,20 @@ current deliverable and the code is a scaffold.
 | `geometry.py` | Shared principal-axis maths, so the three above need not import each other. |
 | `fetch.py` | The **only** module that touches the network. |
 | `tileio.py` | RICE-compressed FITS read/write. |
+| `diagnostics.py` | Renders every detector stage; also the seed of the Phase 5 vetting queue. |
+| `synthetic.py` | Parametric wake generator. Defaults are **fitted** to the transplant, not published values. |
+| `template.py` | Cuts the real RBH-1 out as a transplantable template (ADR-0017). |
+| `inject.py` | Adds sources to real tiles, including the `(1 − f²)σ²` noise compensation. |
+| `recovery.py` | Injection–recovery trials and completeness. |
+
+## Phase 2 gotchas worth knowing
+
+- **Completeness means passing the selection window, not merely being detected.** A source
+  detected as three fragments reaches no catalogue. `Trial` records both separately.
+- **The generator's parameters interact.** Widening a feature at fixed flux lowers its peak
+  surface brightness, so less clears the threshold and recovered length drops. Calibrate on
+  a joint grid, never one parameter at a time.
+- **`WakeParameters.width_arcsec` is degenerate with the effective PSF** and is not a
+  physical claim. See ADR-0017.
+- MAST's *query* endpoint times out often; its S3 bucket is reliable. Prefer
+  `_resolve_uris` / explicit `--uri` over `find_drizzled_products`.

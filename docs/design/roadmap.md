@@ -71,6 +71,18 @@ here: the generator cannot be validated before the transplant exists
 RBH-1's parameters, and the completeness grid is reported as a function of clumpiness rather
 than at one assumed value.
 
+### Progress
+
+Steps 1–3 are done. The transplant reproduces the real object almost exactly (5.60″ vs
+5.50″ recovered length, 0.27″ vs 0.26″ width, axis ratio 20.6 vs 21.4), which is the Tier 1
+round-trip check in [ADR-0017](../adr/0017-synthetic-realism.md) passing. The generator is
+calibrated against it on a joint grid; the outcome, including a clumpiness result that
+contradicted the prior assumption and a width–PSF degeneracy that has to be stated rather
+than resolved, is recorded as an amendment to that ADR.
+
+10 real destination tiles from the discovery visit are cached under `data/destinations/`
+(git-ignored, regenerate with `uv run rbh fetch-destinations`).
+
 ---
 
 ## Phase 3 — Scale

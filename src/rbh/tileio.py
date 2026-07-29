@@ -24,6 +24,12 @@ if TYPE_CHECKING:
 QUANTIZE_LEVEL = 16
 
 #: Provenance keys promoted to primary-header cards, with their FITS keywords.
+#:
+#: Values are written in full. A FITS card holds only 68 characters, but astropy applies
+#: the CONTINUE convention automatically for longer strings; an earlier version truncated
+#: instead, which silently corrupted every recorded S3 URI into an unusable prefix. Since
+#: ADR-0012 requires the exact source bytes be identifiable, that is a correctness bug and
+#: not a cosmetic one - hence the round-trip test in ``tests/test_tile.py``.
 _PROVENANCE_CARDS = {
     "source_uri": "SRCURI",
     "proposal_id": "PROPOSID",
@@ -43,7 +49,7 @@ def write_tile(tile: Tile, path: Path) -> None:
     for key, value in sorted(tile.provenance.items()):
         card = _PROVENANCE_CARDS.get(key)
         if card:
-            primary.header[card] = str(value)[:68]
+            primary.header[card] = str(value)
         else:
             primary.header.add_history(f"{key}={value}")
 

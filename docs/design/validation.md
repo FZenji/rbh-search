@@ -102,6 +102,20 @@ which must be measured rather than assumed.
 - Decisions are logged with the vetter, timestamp, and score, so the human stage is as
   auditable as the algorithmic ones.
 
+### What Phase 2 changed
+
+Building the injection machinery surfaced three defects in code that had already passed
+review and CI, which is worth recording as evidence for why measurement beats inspection:
+
+| Defect | Effect |
+|---|---|
+| Provenance card values truncated to 68 characters | Every recorded S3 URI was silently corrupted into an unusable prefix, defeating [ADR-0012](../adr/0012-reproducibility-contract.md). Now written in full via the FITS `CONTINUE` convention, with a round-trip test. |
+| Cutout bounds unchecked in `fetch_tile` | A negative slice start is not an error in numpy — it counts from the far end — so an out-of-bounds request returned **pixels from the wrong part of the sky** rather than failing. Now validated explicitly. |
+| Width measured as a flux-weighted second moment | Biased high by about 7% (0.256 → 0.274 arcsec on RBH-1), because clipping negatives leaves the positive half of the background contributing weight at large transverse offsets where the lever arm is greatest. Replaced with a collapsed transverse profile and a half-maximum crossing. |
+
+The first two were found only because something downstream actually tried to *use* the
+values. Neither would have been caught by a test that merely checked the code ran.
+
 ## Software quality gates
 
 Enforced by pre-commit locally and by CI on every push:

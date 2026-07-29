@@ -83,12 +83,25 @@ def fetch_tile(
             x, y = (float(v) for v in wcs.world_to_pixel(target))
             x0 = round(x) - half_size_pixels
             y0 = round(y) - half_size_pixels
-            section = (
-                slice(y0, y0 + 2 * half_size_pixels),
-                slice(x0, x0 + 2 * half_size_pixels),
-            )
+            size = 2 * half_size_pixels
+            height, width = hdul[1].shape
+
+            # Bounds must be checked explicitly. A negative slice start is not an error in
+            # numpy - it counts from the far end of the array - so an out-of-bounds request
+            # would silently return pixels from the wrong part of the sky rather than fail.
+            if x0 < 0 or y0 < 0 or x0 + size > width or y0 + size > height:
+                msg = (
+                    f"cutout [{y0}:{y0 + size}, {x0}:{x0 + size}] falls outside the "
+                    f"{height}x{width} image for {ra_deg:.6f} {dec_deg:+.6f}"
+                )
+                raise ValueError(msg)
+
+            section = (slice(y0, y0 + size), slice(x0, x0 + size))
             science = np.asarray(hdul[1].section[section], dtype=np.float32)
             weight = np.asarray(hdul[2].section[section], dtype=np.float32)
+            if science.shape != (size, size):
+                msg = f"expected a {size}x{size} cutout, got {science.shape}"
+                raise ValueError(msg)
 
             header = hdul[1].header.copy()
             header["CRPIX1"] -= x0

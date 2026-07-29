@@ -198,6 +198,23 @@ make sense, it should be here — if it isn't, that's a documentation bug worth 
   pipeline, count how many it recovers. See
   [ADR-0009](adr/0009-injection-recovery.md).
 
+**Transplant**
+: Our primary "fake": the **real** RBH-1 pixels, cut out and pasted into other real sky. No
+  model, so no modelling errors. Its limitation is that it gives us exactly one shape. See
+  [ADR-0017](adr/0017-synthetic-realism.md).
+
+**Clumpiness**
+: How much a wake's light is concentrated into discrete knots rather than spread smoothly.
+  It matters because a clumpy feature breaks apart at the detection threshold. Measuring
+  RBH-1 showed its clumpiness is low, and that most of its fragmentation is the threshold
+  cutting a fairly smooth feature wherever the noise dips.
+
+**Degeneracy**
+: When two different explanations fit the data equally well, so the measurement can't tell
+  them apart. Ours: a wake could look this wide either because it *is* that wide or because
+  the telescope's blurring is worse than assumed. Separating them needs a star in the field
+  to measure the blurring, and our cutout hasn't got one.
+
 **Ridge filter / vesselness filter**
 : Our main detection tool. An image filter designed to highlight thin line-like structures.
   Borrowed from medical imaging, where the same maths finds blood vessels in scans.

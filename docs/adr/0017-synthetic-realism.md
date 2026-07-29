@@ -62,9 +62,16 @@ Handled explicitly:
   conservative direction for an upper limit — a property worth keeping rather than
   correcting away.
 - **Rescaling flux to probe the brightness dependence needs a noise correction.** Scaling a
-  transplant by `f` scales its noise by `f` too, which would make faint injections
-  unrealistically clean. Compensating noise of variance `(1 − f²)σ²` is added so the total
-  matches what a source of that brightness would actually carry.
+  transplant by `f` scales its carried noise by `f` too, so faint injections would arrive
+  proportionally *cleaner* than bright ones and the completeness curve would acquire a
+  spurious brightness-dependent tilt. Adding compensating noise of variance `(1 − f²)σ²`
+  makes the carried noise `σ` regardless of `f`.
+
+    To be precise about what this does and does not achieve: it makes the penalty a
+    **constant offset rather than a slope**. It does not remove the penalty — the injected
+    source still sits in sky noisier than a real one by up to √2 — and it cannot, since the
+    template's noise is inseparable from its pixels. Constant-and-conservative is
+    interpretable; sloped is not.
 - **Rotation is restricted to multiples of 90°** where possible, so no interpolation
   smoothing is introduced; other angles are permitted but flagged, and the smoothing
   measured.
@@ -110,6 +117,45 @@ of care changes that. So:
 - **Full feature-distribution comparison.** Compare the whole measured feature vector from
   synthetics against the real object, not just whether it was detected. Matching detection
   rates while mismatching measured widths would mean the generator is right by accident.
+
+## Amendment, 2026-07-30 (Phase 2 calibration outcome)
+
+The Tier 2 gate was run. It worked, in the sense that it caught the generator being wrong,
+and three things came out of it that were not anticipated above.
+
+**1. The parameters are not independent, so tuning them one at a time is invalid.** The
+first attempt fitted tail brightness, then clumpiness, then width, in sequence. Widening a
+feature at fixed total flux lowers its peak surface brightness, so less of it clears the
+threshold and the recovered length drops - the width step silently undid the length match,
+taking recovered length from 6.4 to 3.8 arcsec against a 5.6 arcsec target. Calibration is
+now a single joint grid against a combined objective over recovered length, measured width
+and fragmentation rate.
+
+**2. Uncalibrated, the generator was substantially too easy to find.** At RBH-1's
+brightness the transplant is recovered at 5.6 arcsec with axis ratio ~19; the initial
+parametric guess gave 8.3 arcsec and axis ratio ~35. It also looked obviously wrong: too
+smooth and too uniformly bright, and a person could pick it out of a mixed set at a glance.
+That is the blind-discrimination check failing before it was formally run, and it is exactly
+the direction of bias this ADR was written to prevent.
+
+**3. Most of RBH-1's fragmentation is not intrinsic clumpiness.** The fitted clumpiness is
+0.0-0.2, where 0.6 had been assumed. A nearly smooth feature at this surface brightness
+already fragments about 65-80% of the time, because the threshold cuts it wherever noise
+dips. Clumpiness remains a real axis of the grid - fragmentation rises monotonically with it,
+reaching 100% by 0.6 - but at RBH-1's brightness it is a second-order effect behind the
+noise. That is a correction to the reasoning in the Context above, which attributed
+fragmentation primarily to lumpiness.
+
+**Fitted defaults** (`rbh.synthetic.WakeParameters`): `tail_brightness=0.02`,
+`clumpiness=0.1`, `width_arcsec=0.22`.
+
+**A degeneracy that must not be misread.** The fitted intrinsic width of 0.22 arcsec sits
+well above the published 0.06-0.15. It is degenerate with the effective PSF of the drizzled
+products, which cannot be measured from the discovery cutout because there are no stars in
+it - the only compact objects are 175-215 pixel galaxies, which measure their own sizes, not
+the PSF. An effective drizzled PSF near 0.2 arcsec would reconcile the two exactly. The
+consequence: the generator is calibrated for **detectability**, and its width parameter is
+not a physical claim about wake widths. Separating the two needs a field with a star in it.
 
 ## Consequences
 

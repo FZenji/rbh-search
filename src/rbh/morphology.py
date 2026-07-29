@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from astropy import units as u
-from scipy import ndimage
 
 from rbh.geometry import principal_axis, project
 
@@ -61,7 +60,7 @@ def measure(
     wcs: WCS,
     pixel_scale_arcsec: float,
     *,
-    width_grow_pixels: int = 3,
+    width_half_extent_pixels: int = 14,
     straightness_bins: int = 8,
 ) -> Morphology:
     """Measure the geometry of one ridge detection.
@@ -77,9 +76,9 @@ def measure(
         World coordinate system of the tile.
     pixel_scale_arcsec
         Tile pixel scale.
-    width_grow_pixels
-        The mask is dilated by this much before measuring the transverse profile, so the
-        width is not biased low by the detection threshold clipping the wings.
+    width_half_extent_pixels
+        Half-width of the band used for the transverse profile. Must be wide enough to
+        contain the feature's wings and leave outer bins for the background estimate.
     straightness_bins
         Number of bins along the feature used to trace its spine.
     """
@@ -91,7 +90,7 @@ def measure(
     length_arcsec = float(along.max() - along.min()) * pixel_scale_arcsec
 
     width_arcsec = _measure_width(
-        detection, image, centre, minor, pixel_scale_arcsec, width_grow_pixels
+        detection, image, centre, major, minor, pixel_scale_arcsec, width_half_extent_pixels
     )
     straightness_arcsec = _measure_straightness(
         points, centre, major, minor, pixel_scale_arcsec, straightness_bins
@@ -125,25 +124,104 @@ def _measure_width(
     detection: RidgeDetection,
     image: NDArray[np.float32],
     centre: NDArray[np.float64],
+    major: NDArray[np.float64],
     minor: NDArray[np.float64],
     pixel_scale_arcsec: float,
-    grow_pixels: int,
+    half_extent_pixels: int = 14,
 ) -> float:
-    """Return the FWHM of the flux-weighted transverse profile, in arcsec."""
-    mask = np.zeros(image.shape, dtype=bool)
-    mask[detection.ys, detection.xs] = True
-    if grow_pixels > 0:
-        mask = ndimage.binary_dilation(mask, iterations=grow_pixels)
+    """Return the FWHM of the transverse profile, collapsed along the feature.
 
-    ys, xs = np.nonzero(mask)
-    offsets = (np.column_stack([xs, ys]).astype(np.float64) - centre) @ minor
-    flux = np.clip(image[ys, xs].astype(np.float64), 0.0, None)
-    total = flux.sum()
-    if total <= 0:
-        return float(offsets.std()) * _FWHM_PER_SIGMA * pixel_scale_arcsec
-    mean = float((flux * offsets).sum() / total)
-    variance = float((flux * (offsets - mean) ** 2).sum() / total)
-    return float(np.sqrt(max(variance, 0.0))) * _FWHM_PER_SIGMA * pixel_scale_arcsec
+    The profile is built by summing flux along the whole length in bins of transverse
+    offset, which beats the background down by roughly the square root of the length before
+    any width is measured. A residual background taken from the outermost bins is then
+    subtracted and the FWHM read off by interpolating to half maximum.
+
+    The obvious alternative - a flux-weighted second moment over the detection mask - is
+    biased high: clipping negatives to zero leaves the positive half of the background
+    noise contributing weight at large transverse offsets, where the squared lever arm is
+    greatest. On RBH-1 the effect is about 7%, inflating 0.256 to 0.274 arcsec, which
+    propagates into the axis ratio and hence into the selection window.
+
+    Note that 0.256 arcsec is still well above the quadrature sum of the published
+    intrinsic width (0.06-0.15) and the nominal ACS PSF (~0.10). Whether the excess is a
+    broader effective drizzled PSF or a genuinely wider feature cannot be separated from
+    this cutout, which contains no stars to measure a PSF from. See ADR-0017.
+    """
+    ys_det, xs_det = detection.ys, detection.xs
+    pad = half_extent_pixels + 2
+    y0 = max(int(ys_det.min()) - pad, 0)
+    y1 = min(int(ys_det.max()) + pad + 1, image.shape[0])
+    x0 = max(int(xs_det.min()) - pad, 0)
+    x1 = min(int(xs_det.max()) + pad + 1, image.shape[1])
+
+    gy, gx = np.mgrid[y0:y1, x0:x1].astype(np.float64)
+    points = np.column_stack([gx.ravel(), gy.ravel()])
+    along = (points - centre) @ major
+    across = (points - centre) @ minor
+    flux = image[y0:y1, x0:x1].astype(np.float64).ravel()
+
+    detection_along = (np.column_stack([xs_det, ys_det]).astype(np.float64) - centre) @ major
+    inside = (
+        (along >= detection_along.min())
+        & (along <= detection_along.max())
+        & (np.abs(across) <= half_extent_pixels)
+    )
+    if inside.sum() < 10:
+        return float(np.abs(across[inside]).std() * _FWHM_PER_SIGMA * pixel_scale_arcsec)
+
+    edges = np.arange(-half_extent_pixels, half_extent_pixels + 1.0)
+    sums, _ = np.histogram(across[inside], bins=edges, weights=flux[inside])
+    counts, _ = np.histogram(across[inside], bins=edges)
+    valid = counts > 0
+    if valid.sum() < 5:
+        return float(np.abs(across[inside]).std() * _FWHM_PER_SIGMA * pixel_scale_arcsec)
+
+    profile = np.zeros(sums.shape)
+    profile[valid] = sums[valid] / counts[valid]
+    offsets = 0.5 * (edges[:-1] + edges[1:])
+
+    outer = valid & (np.abs(offsets) >= 0.75 * half_extent_pixels)
+    background = float(np.median(profile[outer])) if outer.any() else 0.0
+    profile = profile - background
+
+    peak = float(profile.max())
+    if peak <= 0:
+        return 0.0
+    return _fwhm_from_profile(offsets, profile, peak) * pixel_scale_arcsec
+
+
+def _fwhm_from_profile(
+    offsets: NDArray[np.float64], profile: NDArray[np.float64], peak: float
+) -> float:
+    """Full width at half maximum of a 1-D profile, by linear interpolation."""
+    half = peak / 2.0
+    apex = int(np.argmax(profile))
+
+    def crossing(indices: range) -> float | None:
+        previous = apex
+        for i in indices:
+            if profile[i] < half:
+                span = profile[previous] - profile[i]
+                if span <= 0:
+                    return float(offsets[i])
+                fraction = (profile[previous] - half) / span
+                return float(offsets[previous] + fraction * (offsets[i] - offsets[previous]))
+            previous = i
+        return None
+
+    right = crossing(range(apex + 1, profile.size))
+    left = crossing(range(apex - 1, -1, -1))
+    if right is None or left is None:
+        # Profile never falls to half maximum inside the window; fall back to the
+        # second moment of the positive part, which is at least bounded.
+        weights = np.clip(profile, 0.0, None)
+        total = weights.sum()
+        if total <= 0:
+            return 0.0
+        mean = float((weights * offsets).sum() / total)
+        variance = float((weights * (offsets - mean) ** 2).sum() / total)
+        return float(np.sqrt(max(variance, 0.0))) * _FWHM_PER_SIGMA
+    return abs(right - left)
 
 
 def _measure_straightness(

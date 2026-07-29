@@ -118,6 +118,34 @@ def test_tile_round_trips_through_fits(tmp_path: Path, noise_field: np.ndarray) 
     assert error < 0.05 * float(original.std())
 
 
+def test_long_provenance_uris_survive_the_round_trip(
+    tmp_path: Path, noise_field: np.ndarray
+) -> None:
+    """Source URIs must come back byte-identical, however long (ADR-0012).
+
+    A FITS card holds 68 characters and two semicolon-joined S3 URIs are about 118, so an
+    implementation that truncates instead of using CONTINUE silently destroys the record of
+    which bytes a result came from.
+    """
+    uris = (
+        "s3://stpubdata/hst/public/jety/jety02010/jety02010_drc.fits;"
+        "s3://stpubdata/hst/public/jety/jety02020/jety02020_drc.fits"
+    )
+    assert len(uris) > 68
+    tile = make_tile({"F606W": noise_field})
+    tile = Tile(
+        bands=tile.bands,
+        wcs=tile.wcs,
+        pixel_scale_arcsec=tile.pixel_scale_arcsec,
+        provenance={"source_uri": uris, "proposal_id": "GO-16912"},
+    )
+    path = tmp_path / "tile.fits"
+    write_tile(tile, path)
+    restored = read_tile(path)
+    assert restored.provenance["source_uri"] == uris
+    assert restored.provenance["source_uri"].count("s3://") == 2
+
+
 def test_round_trip_preserves_world_coordinates(tmp_path: Path, noise_field: np.ndarray) -> None:
     tile = make_tile({"F606W": noise_field})
     path = tmp_path / "tile.fits"

@@ -125,7 +125,10 @@ RBH1_FIXTURE: Final[FixtureSpec] = FixtureSpec(
 RBH1_LITMUS: Final[LitmusExpectation] = LitmusExpectation(
     length_arcsec=5.50,
     length_tolerance=0.60,
-    width_arcsec=0.274,
+    # 0.256 with the collapsed-transverse-profile estimator introduced in Phase 2. The
+    # earlier flux-weighted second moment read 0.274, biased high by background noise at
+    # large transverse offsets.
+    width_arcsec=0.256,
     width_tolerance=0.080,
     position_angle_deg=148.3,
     position_angle_tolerance=5.0,
