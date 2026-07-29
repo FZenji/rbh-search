@@ -16,17 +16,22 @@ importantly — puts a number on how many we would have found if they were there
 
 ## Where we are right now
 
-**Phases 0 and 1 of 6: complete.**
+**Phases 0 and 1 complete; Phase 2's main gate met.**
 
-The detector works and **finds RBH-1 automatically** in its original discovery image,
-offline, on every commit. It recovers the wake as a single 5.50″ feature with axis ratio
-20; measuring from the published host-galaxy coordinate to the far end gives **8.10″
-against the published 7.8″**. Applying the selection window to that field leaves exactly
-one candidate — the right one.
+The detector **finds RBH-1 automatically** in its original discovery image, offline, on
+every commit — a single 5.50″ feature with axis ratio 20, and measuring from the published
+host-galaxy coordinate to the far end gives **8.10″ against the published 7.8″**. Applying
+the selection window to that field leaves exactly one candidate, the right one.
 
-**Phase 2 is next:** injection–recovery. Paste synthetic wakes into real images and measure
-what fraction we find, which is what turns a search into a measurement. Full phase list in
-the [roadmap](docs/design/roadmap.md).
+We can now also say **how much we would find**. Measured by injecting both the real RBH-1
+pixels and calibrated synthetic wakes into 11 real archival tiles: completeness is ~100%
+down to F606W ≈ 23.8 (RBH-1 itself is 23.77) with a **50% limit at 24.61**. Critically that
+limit moves by only **0.14 mag** across the entire plausible range of wake clumpiness — the
+morphological property we can least constrain from a single object — because fragment
+linking absorbs the difference.
+
+Remaining Phase 2 work (other lengths and colours, negative controls, blind human vetting)
+is listed in the [roadmap](docs/design/roadmap.md).
 
 To read all the documentation as a proper website with search and navigation:
 

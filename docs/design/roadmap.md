@@ -71,14 +71,46 @@ here: the generator cannot be validated before the transplant exists
 RBH-1's parameters, and the completeness grid is reported as a function of clumpiness rather
 than at one assumed value.
 
-### Progress
+### Gate met
 
-Steps 1–3 are done. The transplant reproduces the real object almost exactly (5.60″ vs
-5.50″ recovered length, 0.27″ vs 0.26″ width, axis ratio 20.6 vs 21.4), which is the Tier 1
-round-trip check in [ADR-0017](../adr/0017-synthetic-realism.md) passing. The generator is
-calibrated against it on a joint grid; the outcome, including a clumpiness result that
-contradicted the prior assumption and a width–PSF degeneracy that has to be stated rather
-than resolved, is recorded as an amendment to that ADR.
+**The transplant reproduces the real object.** 5.60″ vs 5.50″ recovered length, 0.27″ vs
+0.26″ width, axis ratio 20.6 vs 21.4 — the Tier 1 round-trip check in
+[ADR-0017](../adr/0017-synthetic-realism.md) passing.
+
+**The generator reproduces the transplant** once calibrated on a joint grid: 5.87″, 0.258″,
+axis ratio 23.3. Uncalibrated it gave 8.3″ and axis ratio 35, so the gate caught it.
+
+**Completeness, measured over 44 injection sites in 11 real archival tiles** (binomial
+uncertainty ±7.5% at 50%):
+
+| mag F606W | 22.5 | 23.0 | 23.5 | 23.8 | 24.1 | 24.4 | 24.8 | 25.3 |
+|---|---|---|---|---|---|---|---|---|
+| transplant | 100 | 100 | 100 | 100 | 91 | 75 | 27 | 0 |
+| parametric c=0.0 | 100 | 98 | 100 | 100 | 84 | 71 | 30 | 5 |
+| parametric c=0.3 | 100 | 98 | 100 | 98 | 91 | 77 | 39 | 0 |
+| parametric c=0.6 | 100 | 100 | 100 | 98 | 86 | 75 | 41 | 5 |
+| parametric c=0.9 | 100 | 100 | 98 | 96 | 89 | 77 | 46 | 7 |
+
+RBH-1 itself sits at 23.77, comfortably in the flat 100% region. The 50% limit is
+**24.61**, and varies by only **0.14 mag** across the full clumpiness range — the headline
+robustness result, discussed in the ADR amendment.
+
+Detection rate stays at 77–84% at mag 25.3 where completeness has fallen to 0–7%: at the
+faint end sources *are* found, but arrive too fragmented or too short to pass the selection
+window. Recording the two separately was therefore necessary, not pedantic.
+
+### Still outstanding for Phase 2
+
+The grid above is one slice, not a selection function. Still to do:
+
+- **Other lengths, inclinations and colours.** Everything above is at 8.1″ and one colour.
+- **Negative controls** (step 5): noise realisations, rotated and mirrored tiles,
+  known-artifact fields, labelled edge-on disks as the discriminator's negative class.
+- **Blind human discrimination** (step 6).
+- **Crowded positions.** Injections currently avoid bright sources, so this is completeness
+  for uncrowded sky and that restriction is part of the selection function.
+- **More sites.** 44 gives ±7.5% per point, and background realisations are reused across
+  magnitudes, so differences between curves are more reliable than absolute values.
 
 10 real destination tiles from the discovery visit are cached under `data/destinations/`
 (git-ignored, regenerate with `uv run rbh fetch-destinations`).

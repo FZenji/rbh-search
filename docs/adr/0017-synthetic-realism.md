@@ -149,6 +149,29 @@ fragmentation primarily to lumpiness.
 **Fitted defaults** (`rbh.synthetic.WakeParameters`): `tail_brightness=0.02`,
 `clumpiness=0.1`, `width_arcsec=0.22`.
 
+**4. The completeness turns out to be nearly insensitive to clumpiness - which is the whole
+worry defused.** Measured over 44 injection sites in 11 real tiles, the 50% completeness
+limit is:
+
+| Source | 50% limit (F606W, AB) |
+|---|---|
+| Transplanted real pixels | 24.61 |
+| Parametric, clumpiness 0.0 | 24.60 |
+| Parametric, clumpiness 0.3 | 24.68 |
+| Parametric, clumpiness 0.6 | 24.69 |
+| Parametric, clumpiness 0.9 | 24.74 |
+
+A spread of **0.14 mag across the entire plausible range** of the one morphological property
+we cannot constrain from a single object. Fragmentation over that same range climbs from
+about 68% to 100%, so clumpiness is doing exactly what was expected to the *detector* - the
+reason it barely reaches the *catalogue* is that collinear fragment linking
+([ADR-0016](0016-rejoin-collinear-fragments.md)) absorbs it.
+
+That is a stronger result than this ADR set out to obtain. The Tier 3 requirement to publish
+completeness as a function of clumpiness still stands, but the honest summary is now that the
+derived space-density limit is robust to the morphology assumption at the 0.15 mag level,
+rather than hostage to it.
+
 **A degeneracy that must not be misread.** The fitted intrinsic width of 0.22 arcsec sits
 well above the published 0.06-0.15. It is degenerate with the effective PSF of the drizzled
 products, which cannot be measured from the discovery cutout because there are no stars in

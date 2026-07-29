@@ -299,9 +299,24 @@ Two things went wrong along the way, which is the useful part:
   detect the pieces and stitch back together the ones that line up
   ([ADR-0016](adr/0016-rejoin-collinear-fragments.md)).
 
-**Phase 2 is next: the measurement.** This is section 7 above — hiding fake wakes in real
-images to find out what fraction we'd catch. Until that exists, we can find things but we
-can't say what we'd have missed.
+**Phase 2's main gate is met: we can now say what fraction we'd catch.** This is section 7
+above, and the answer is encouraging. Injecting both the *real* RBH-1 pixels and calibrated
+fakes into 11 real patches of sky:
+
+- Anything as bright as RBH-1 or brighter: **we find essentially all of it.**
+- Halfway point: **magnitude 24.6**, about 0.8 magnitudes fainter than RBH-1 (roughly twice
+  as faint).
+- **The answer barely changes with how clumpy the wake is** — the halfway point shifts by
+  only 0.14 magnitudes across the whole plausible range. That was the thing we were most
+  worried about, because with one known example we can't tell how clumpy real wakes are. The
+  stitching step from Phase 1 turns out to absorb the difference.
+
+Two more honest notes. Fake wakes built from a formula were, before calibration, *much*
+easier to find than the real thing — recovered at 8.3 arcseconds where the real object gives
+5.5. That's exactly the flattering-ourselves failure the transplant approach exists to
+catch, and it caught it. And building all this surfaced three real bugs in code that had
+already passed review, including one where an out-of-bounds image request silently returned
+pixels from the **wrong part of the sky** instead of failing.
 
 The full phase list, with what each one has to achieve before the next begins, is in the
 [roadmap](design/roadmap.md).
