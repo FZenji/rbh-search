@@ -1,0 +1,376 @@
+{
+ "psf_fwhm": 0.11,
+ "length": 8.1,
+ "width": 0.22,
+ "tail": 0.02,
+ "template_mag": 23.774,
+ "template_colour": 0.709,
+ "real": {
+  "length": 5.497,
+  "width": 0.2563,
+  "axis_ratio": 21.45
+ },
+ "n_sites": 44,
+ "rows": [
+  {
+   "label": "transplant",
+   "mag": 22.5,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 1.0,
+   "fragmentation": 0.7273,
+   "median_length": 5.81
+  },
+  {
+   "label": "transplant",
+   "mag": 23.0,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 1.0,
+   "fragmentation": 0.7273,
+   "median_length": 5.761
+  },
+  {
+   "label": "transplant",
+   "mag": 23.5,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 1.0,
+   "fragmentation": 0.7273,
+   "median_length": 5.673
+  },
+  {
+   "label": "transplant",
+   "mag": 23.8,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 1.0,
+   "fragmentation": 0.75,
+   "median_length": 5.563
+  },
+  {
+   "label": "transplant",
+   "mag": 24.1,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 0.9091,
+   "fragmentation": 0.9545,
+   "median_length": 5.387
+  },
+  {
+   "label": "transplant",
+   "mag": 24.4,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 0.75,
+   "fragmentation": 0.9318,
+   "median_length": 4.376
+  },
+  {
+   "label": "transplant",
+   "mag": 24.8,
+   "n": 44,
+   "detection_rate": 0.9773,
+   "completeness": 0.2727,
+   "fragmentation": 0.7674,
+   "median_length": 1.338
+  },
+  {
+   "label": "transplant",
+   "mag": 25.3,
+   "n": 44,
+   "detection_rate": 0.7955,
+   "completeness": 0.0,
+   "fragmentation": 0.6,
+   "median_length": 0.67
+  },
+  {
+   "label": "parametric c=0.0",
+   "mag": 22.5,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 1.0,
+   "fragmentation": 0.6818,
+   "median_length": 7.505
+  },
+  {
+   "label": "parametric c=0.0",
+   "mag": 23.0,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 0.9773,
+   "fragmentation": 0.6818,
+   "median_length": 7.196
+  },
+  {
+   "label": "parametric c=0.0",
+   "mag": 23.5,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 1.0,
+   "fragmentation": 0.7045,
+   "median_length": 6.57
+  },
+  {
+   "label": "parametric c=0.0",
+   "mag": 23.8,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 1.0,
+   "fragmentation": 0.7045,
+   "median_length": 5.966
+  },
+  {
+   "label": "parametric c=0.0",
+   "mag": 24.1,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 0.8409,
+   "fragmentation": 0.7727,
+   "median_length": 4.786
+  },
+  {
+   "label": "parametric c=0.0",
+   "mag": 24.4,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 0.7045,
+   "fragmentation": 0.75,
+   "median_length": 2.621
+  },
+  {
+   "label": "parametric c=0.0",
+   "mag": 24.8,
+   "n": 44,
+   "detection_rate": 0.9318,
+   "completeness": 0.2955,
+   "fragmentation": 0.6829,
+   "median_length": 1.364
+  },
+  {
+   "label": "parametric c=0.0",
+   "mag": 25.3,
+   "n": 44,
+   "detection_rate": 0.7727,
+   "completeness": 0.0455,
+   "fragmentation": 0.6765,
+   "median_length": 0.769
+  },
+  {
+   "label": "parametric c=0.3",
+   "mag": 22.5,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 1.0,
+   "fragmentation": 0.6818,
+   "median_length": 7.628
+  },
+  {
+   "label": "parametric c=0.3",
+   "mag": 23.0,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 0.9773,
+   "fragmentation": 0.7727,
+   "median_length": 6.989
+  },
+  {
+   "label": "parametric c=0.3",
+   "mag": 23.5,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 1.0,
+   "fragmentation": 0.7727,
+   "median_length": 6.504
+  },
+  {
+   "label": "parametric c=0.3",
+   "mag": 23.8,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 0.9773,
+   "fragmentation": 0.8636,
+   "median_length": 5.672
+  },
+  {
+   "label": "parametric c=0.3",
+   "mag": 24.1,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 0.9091,
+   "fragmentation": 0.9091,
+   "median_length": 4.678
+  },
+  {
+   "label": "parametric c=0.3",
+   "mag": 24.4,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 0.7727,
+   "fragmentation": 0.8182,
+   "median_length": 2.925
+  },
+  {
+   "label": "parametric c=0.3",
+   "mag": 24.8,
+   "n": 44,
+   "detection_rate": 0.8864,
+   "completeness": 0.3864,
+   "fragmentation": 0.7179,
+   "median_length": 1.488
+  },
+  {
+   "label": "parametric c=0.3",
+   "mag": 25.3,
+   "n": 44,
+   "detection_rate": 0.8182,
+   "completeness": 0.0,
+   "fragmentation": 0.5833,
+   "median_length": 0.762
+  },
+  {
+   "label": "parametric c=0.6",
+   "mag": 22.5,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 1.0,
+   "fragmentation": 0.8636,
+   "median_length": 7.648
+  },
+  {
+   "label": "parametric c=0.6",
+   "mag": 23.0,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 1.0,
+   "fragmentation": 0.9318,
+   "median_length": 6.887
+  },
+  {
+   "label": "parametric c=0.6",
+   "mag": 23.5,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 1.0,
+   "fragmentation": 1.0,
+   "median_length": 6.478
+  },
+  {
+   "label": "parametric c=0.6",
+   "mag": 23.8,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 0.9773,
+   "fragmentation": 1.0,
+   "median_length": 5.95
+  },
+  {
+   "label": "parametric c=0.6",
+   "mag": 24.1,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 0.8636,
+   "fragmentation": 0.9773,
+   "median_length": 4.997
+  },
+  {
+   "label": "parametric c=0.6",
+   "mag": 24.4,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 0.75,
+   "fragmentation": 0.8864,
+   "median_length": 3.589
+  },
+  {
+   "label": "parametric c=0.6",
+   "mag": 24.8,
+   "n": 44,
+   "detection_rate": 0.9545,
+   "completeness": 0.4091,
+   "fragmentation": 0.6905,
+   "median_length": 1.541
+  },
+  {
+   "label": "parametric c=0.6",
+   "mag": 25.3,
+   "n": 44,
+   "detection_rate": 0.8409,
+   "completeness": 0.0455,
+   "fragmentation": 0.6486,
+   "median_length": 0.918
+  },
+  {
+   "label": "parametric c=0.9",
+   "mag": 22.5,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 1.0,
+   "fragmentation": 1.0,
+   "median_length": 7.344
+  },
+  {
+   "label": "parametric c=0.9",
+   "mag": 23.0,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 1.0,
+   "fragmentation": 1.0,
+   "median_length": 6.667
+  },
+  {
+   "label": "parametric c=0.9",
+   "mag": 23.5,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 0.9773,
+   "fragmentation": 1.0,
+   "median_length": 6.318
+  },
+  {
+   "label": "parametric c=0.9",
+   "mag": 23.8,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 0.9545,
+   "fragmentation": 1.0,
+   "median_length": 5.623
+  },
+  {
+   "label": "parametric c=0.9",
+   "mag": 24.1,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 0.8864,
+   "fragmentation": 1.0,
+   "median_length": 4.998
+  },
+  {
+   "label": "parametric c=0.9",
+   "mag": 24.4,
+   "n": 44,
+   "detection_rate": 1.0,
+   "completeness": 0.7727,
+   "fragmentation": 0.9091,
+   "median_length": 4.083
+  },
+  {
+   "label": "parametric c=0.9",
+   "mag": 24.8,
+   "n": 44,
+   "detection_rate": 0.9773,
+   "completeness": 0.4545,
+   "fragmentation": 0.814,
+   "median_length": 2.08
+  },
+  {
+   "label": "parametric c=0.9",
+   "mag": 25.3,
+   "n": 44,
+   "detection_rate": 0.8409,
+   "completeness": 0.0682,
+   "fragmentation": 0.6757,
+   "median_length": 1.019
+  }
+ ]
+}

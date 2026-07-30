@@ -8,10 +8,16 @@ current deliverable and the code is a scaffold.
 
 ## Read these before proposing anything
 
-1. `docs/adr/README.md` — every locked decision. **Decisions get an ADR before they get
+1. **`docs/design/lab-notebook.md`** — every measurement, gotcha and wrong assumption so
+   far, newest first. Read this first: it is where the nuance lives that no ADR captures,
+   and it will stop you re-deriving things the expensive way.
+2. `docs/adr/README.md` — every locked decision. **Decisions get an ADR before they get
    code.** If you are about to make a design choice, check whether it is already fixed.
-2. `docs/science/rbh-1-dossier.md` — the one known object; all published numbers, sourced.
-3. `docs/design/architecture.md` — the stage cascade.
+3. `docs/science/rbh-1-dossier.md` — the one known object; all published numbers, sourced.
+4. `docs/design/architecture.md` — the stage cascade.
+
+**When you learn something, write it to the lab notebook before the session ends.** A number
+measured, a gotcha hit, an assumption disproved. Context gets compressed; the repo does not.
 
 ## The four things most likely to be got wrong
 
@@ -71,3 +77,17 @@ current deliverable and the code is a scaffold.
   physical claim. See ADR-0017.
 - MAST's *query* endpoint times out often; its S3 bucket is reliable. Prefer
   `_resolve_uris` / explicit `--uri` over `find_drizzled_products`.
+- **Anything that produces a published number belongs in `rbh.studies`, not a scratch
+  script.** Its output goes to `runs/` and, if quoted anywhere, is copied to `docs/data/`.
+- `Select-Object -Last N` on a background command buffers until exit, so you cannot watch
+  progress; write to a file from inside the script instead.
+
+## Where the numbers are
+
+| | |
+|---|---|
+| Published RBH-1 literature values | `rbh.reference.RBH1` (frozen; never edit) |
+| What our pipeline recovers | `rbh.reference.RBH1_LITMUS` (ours; moves when the detector improves) |
+| Fitted generator parameters | `rbh.synthetic.WakeParameters` defaults |
+| Calibration and completeness results | `docs/data/phase2-*.json` |
+| Narrative record of how we got them | `docs/design/lab-notebook.md` |

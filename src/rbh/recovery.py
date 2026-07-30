@@ -25,12 +25,15 @@ from rbh.morphology import Morphology, measure
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
+    from numpy.random import Generator
+
     from rbh.config import SelectionWindow
     from rbh.inject import Injection
     from rbh.tile import Tile
 
-#: An injector takes a clean tile, a centre and a generator, and returns the injected tile.
-Injector = "Callable[[Tile, tuple[int, int], np.random.Generator], tuple[Tile, Injection]]"
+    #: An injector takes a clean tile, a centre and a generator, and returns the injected
+    #: tile plus a record of what went in.
+    type Injector = Callable[[Tile, tuple[int, int], Generator], tuple[Tile, Injection]]
 
 
 @dataclass(frozen=True)
@@ -92,7 +95,7 @@ def _passes(morphology: Morphology, window: SelectionWindow) -> bool:
 
 def run_trial(
     tile: Tile,
-    injector: Callable[[Tile, tuple[int, int], np.random.Generator], tuple[Tile, Injection]],
+    injector: Injector,
     centre: tuple[int, int],
     *,
     window: SelectionWindow,

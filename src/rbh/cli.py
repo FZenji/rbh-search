@@ -7,6 +7,7 @@ yet; this exposes only the introspection commands needed to verify a deployment.
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Annotated
 
@@ -112,6 +113,117 @@ def _resolve_uris(explicit: list[str] | None) -> list[str]:
     from rbh.fetch import find_drizzled_products
 
     return find_drizzled_products(RBH1_FIXTURE.observation_ids)
+
+
+@app.command()
+def calibrate(
+    destinations: Annotated[
+        Path, typer.Option(help="Directory of cached destination tiles.")
+    ] = Path("data/destinations"),
+    out: Annotated[Path, typer.Option(help="Where to write the calibration record.")] = Path(
+        "runs/calibration.json"
+    ),
+    per_tile: Annotated[int, typer.Option(help="Injection sites per destination tile.")] = 4,
+) -> None:
+    """Fit the synthetic generator to the transplanted real RBH-1 (ADR-0017 Tier 2).
+
+    Scans a joint grid over tail brightness, clumpiness and width. Slow - a few hundred
+    detection runs - and only needs re-running when the detector changes.
+    """
+    import json
+
+    from rbh.studies import calibrate_generator, collect_sites, reference_template
+
+    reference = reference_template(FIXTURE_PATH)
+    sites = collect_sites(FIXTURE_PATH, destinations, per_tile=per_tile)
+    typer.echo(
+        f"{len(sites)} injection sites; template mag={reference.total_mag_ab:.2f} "
+        f"colour={reference.colour_ab:+.2f}"
+    )
+    result = calibrate_generator(sites, reference)
+
+    typer.echo(f"\ntransplant target: {_fmt(result.target)}")
+    typer.echo(f"best fit         : {_fmt(result.best_statistics)}  cost={result.best_cost:.2f}")
+    typer.echo(
+        f"  tail_brightness={result.best.tail_brightness} "
+        f"clumpiness={result.best.clumpiness} width_arcsec={result.best.width_arcsec}"
+    )
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(result.to_dict(), indent=1), encoding="utf-8")
+    typer.echo(f"wrote {out}")
+
+
+@app.command()
+def completeness(
+    destinations: Annotated[
+        Path, typer.Option(help="Directory of cached destination tiles.")
+    ] = Path("data/destinations"),
+    out: Annotated[Path, typer.Option(help="Where to write the completeness grid.")] = Path(
+        "runs/completeness.json"
+    ),
+    per_tile: Annotated[int, typer.Option(help="Injection sites per destination tile.")] = 4,
+) -> None:
+    """Measure completeness against brightness, at several clumpiness values.
+
+    This is the Phase 2 deliverable: the selection function slice that lets a null result
+    become a space-density limit.
+    """
+    import json
+
+    from rbh.studies import (
+        collect_sites,
+        completeness_grid,
+        half_completeness_limit,
+        reference_template,
+    )
+
+    reference = reference_template(FIXTURE_PATH)
+    sites = collect_sites(FIXTURE_PATH, destinations, per_tile=per_tile)
+    typer.echo(f"{len(sites)} injection sites; template mag={reference.total_mag_ab:.2f}")
+
+    rows = completeness_grid(sites, reference)
+    sources: list[str] = []
+    for row in rows:
+        if row["source"] not in sources:
+            sources.append(str(row["source"]))
+
+    typer.echo("\n50% completeness limits:")
+    limits = {}
+    for source in sources:
+        selected = [r for r in rows if r["source"] == source]
+        mags = [float(r["mag"]) for r in selected]
+        comp = [float(r["completeness"]) for r in selected]
+        limits[source] = half_completeness_limit(mags, comp)
+        typer.echo(f"  {source:<20} {limits[source]:.2f}")
+    finite = [v for v in limits.values() if not math.isnan(v)]
+    if finite:
+        typer.echo(f"  spread across clumpiness: {max(finite) - min(finite):.2f} mag")
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
+        json.dumps(
+            {
+                "n_sites": len(sites),
+                "template_mag": round(reference.total_mag_ab, 3),
+                "template_colour": round(reference.colour_ab, 3),
+                "half_completeness_limits": limits,
+                "rows": rows,
+            },
+            indent=1,
+        ),
+        encoding="utf-8",
+    )
+    typer.echo(f"wrote {out}")
+
+
+def _fmt(stats: dict[str, float]) -> str:
+    return (
+        f'len={stats["median_length_arcsec"]:.2f}" '
+        f'wid={stats["median_width_arcsec"]:.3f}" '
+        f"ar={stats['median_axis_ratio']:.1f} "
+        f"frag={100 * stats['fragmentation']:.0f}% "
+        f"complete={100 * stats['completeness']:.0f}%"
+    )
 
 
 @app.command("fetch-destinations")

@@ -78,6 +78,7 @@ project, not detecting the streaks.
 | [Target signature](docs/science/target-signature.md) | The observables the pipeline searches for, and their numeric ranges |
 | [False positives](docs/science/false-positives.md) | The contaminant taxonomy and how each is rejected |
 | **Design** | |
+| [**Lab notebook**](docs/design/lab-notebook.md) | Every measurement, gotcha and wrong assumption, newest first |
 | [Architecture](docs/design/architecture.md) | Stages, data flow, work units, parallelism, memory |
 | [Data sources](docs/design/data-sources.md) | What we search, where it lives, how it is accessed |
 | [Validation](docs/design/validation.md) | Litmus test, injection–recovery, negative controls, human vetting |

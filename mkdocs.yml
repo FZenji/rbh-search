@@ -41,6 +41,7 @@ nav:
       - Target signature: science/target-signature.md
       - False positives: science/false-positives.md
   - Design:
+      - Lab notebook: design/lab-notebook.md
       - Architecture: design/architecture.md
       - Data sources: design/data-sources.md
       - Validation: design/validation.md
