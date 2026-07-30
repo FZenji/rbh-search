@@ -17,9 +17,15 @@ Four controls, each isolating a different failure mode:
 * **Real sky** - the archival tiles as they are. Survivors here are *candidates*, not
   established false positives: some will be real edge-on galaxies. This sets the vetting
   budget rather than measuring purity.
-* **Rotated and mirrored real sky** - real structure preserved, but any dependence on
-  detector-frame geometry is decoupled from it. A rate that changes under rotation would
-  indicate the detector is keying on the pixel grid.
+* **Rotated and mirrored real sky** - tests that the detector is invariant under quadrant
+  rotation and reflection, i.e. that it is not keying on the pixel grid.
+
+    This is **not** an artifact-rejection test, though an earlier version of this docstring
+    claimed it was. Rotating the pixels rotates any detector-frame artifact along with them,
+    so their relationship to the grid is preserved and nothing is decoupled. The test that
+    does isolate detector-frame artifacts is cross-visit: the same sky observed at a
+    different roll angle, where artifacts move on the sky and real objects do not. That
+    needs multi-visit coverage, so it belongs to Phase 3.
 * **Shuffled filters** - band A of one tile paired with band B of another. Real objects
   appear in both bands of the *same* field, so this measures how often cross-filter
   coincidence happens by chance, which is the assumption ADR-0006 rests on.
@@ -204,9 +210,14 @@ def transformed_tiles(
 ) -> list[Tile]:
     """Rotate by multiples of 90 degrees and optionally mirror each tile's pixels.
 
-    The WCS is deliberately left alone. These tiles are only ever used to count detections,
-    never to report positions, and rotating the pixels under a fixed WCS is precisely what
-    decouples real sky structure from detector-frame geometry.
+    The WCS is deliberately left alone: these tiles are only ever counted, never positioned.
+
+    Measured on real archival tiles, the detector returns **exactly** identical counts before
+    and after any quadrant rotation or reflection. That is the expected and desired answer -
+    isotropic filters plus 8-connectivity should be invariant - and it is worth having as a
+    guarantee rather than an assumption. What it does not do is test artifact rejection: a
+    detector-frame artifact rotates with the pixels, so nothing about its relation to the
+    grid changes.
     """
     turns = quadrant_rotations % 4
 

@@ -76,17 +76,36 @@ def test_transformed_tiles_preserve_flux_and_shape(noise_field: np.ndarray) -> N
             assert band.science.sum() == pytest.approx(original.science.sum(), rel=1e-5)
 
 
-def test_rotation_moves_a_feature_but_keeps_it_detectable(noise_field: np.ndarray) -> None:
-    """Real structure survives the transform; only its orientation on the grid changes."""
-    line = draw_line(SHAPE, length_pixels=140.0, width_pixels=3.0, angle_deg=0.0, amplitude=6.0)
-    tile = make_tile({"F606W": (noise_field + line).astype(np.float32)})
+def test_transform_really_changes_the_pixels(noise_field: np.ndarray) -> None:
+    """Guard against the transform silently becoming a no-op.
+
+    Worth an explicit test: the rotation control returns identical detection counts, and
+    without this it would be impossible to tell genuine invariance from a broken transform.
+    """
+    tile = two_band(noise_field)
     rotated = transformed_tiles([tile], quadrant_rotations=1, mirror=False)[0]
+    assert not np.array_equal(tile.bands[0].science, rotated.bands[0].science)
+    assert np.array_equal(np.rot90(tile.bands[0].science, 1), rotated.bands[0].science)
+
+
+@pytest.mark.parametrize(("turns", "mirror"), [(1, False), (2, False), (3, False), (0, True)])
+def test_detector_is_invariant_under_quadrant_rotation(
+    noise_field: np.ndarray, turns: int, mirror: bool
+) -> None:
+    """Identical counts before and after, so the detector is not keying on the pixel grid.
+
+    Measured to hold exactly on real archival tiles; pinned here so it stays true. Note this
+    is invariance, not artifact rejection - a detector-frame artifact rotates with the
+    pixels.
+    """
+    line = draw_line(SHAPE, length_pixels=140.0, width_pixels=3.0, angle_deg=20.0, amplitude=6.0)
+    tile = make_tile({"F606W": (noise_field + line).astype(np.float32)})
+    transformed = transformed_tiles([tile], quadrant_rotations=turns, mirror=mirror)[0]
 
     window = SelectionWindow()
-    _, before = count_survivors(tile, window=window, link=True)
-    _, after = count_survivors(rotated, window=window, link=True)
-    assert before >= 1
-    assert after >= 1
+    assert count_survivors(tile, window=window, link=True) == count_survivors(
+        transformed, window=window, link=True
+    )
 
 
 def test_shuffled_filters_pairs_bands_from_different_tiles() -> None:
