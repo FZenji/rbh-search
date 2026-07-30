@@ -17,6 +17,7 @@ Two studies live here:
 from __future__ import annotations
 
 import itertools
+import math
 from dataclasses import asdict, dataclass, replace
 from typing import TYPE_CHECKING
 
@@ -358,6 +359,98 @@ def completeness_grid(
                 }
             )
     return rows
+
+
+def completeness_vs_length(
+    fixture_path: Path,
+    destinations_dir: Path | None,
+    *,
+    lengths_arcsec: Sequence[float] = (2.5, 4.0, 6.0, 8.1, 12.0, 16.0),
+    magnitudes: Sequence[float] = (23.0, 23.8, 24.4, 25.0),
+    params: WakeParameters | None = None,
+    psf_fwhm_arcsec: float = DEFAULT_PSF_FWHM_ARCSEC,
+    window: SelectionWindow | None = None,
+    per_tile: int = 3,
+    seed: int = 9000,
+) -> list[dict[str, float | str]]:
+    """Measure completeness across the length axis as well as brightness.
+
+    Sites are recollected for each length, because a longer feature needs a larger clear
+    margin inside the tile. That has a consequence worth stating: with 20 arcsec tiles a
+    16 arcsec feature can only be centred within about 4 arcsec of the tile centre, so
+    trials within one tile sit on nearly the same background and are not independent. Longer
+    still does not fit at all, which means **this measurement cannot cover the full
+    2-25 arcsec selection window of ADR-0007** - a constraint on the tiling, not on the
+    detector, and one Phase 3 should fix by using larger tiles.
+
+    The transplant cannot participate here: it is a fixed set of real pixels, and stretching
+    it to another length would resample and smooth the knots, which is precisely the bias
+    ADR-0017 exists to avoid. So the length axis rests on the parametric generator, which was
+    calibrated only at 8.1 arcsec. Extrapolation along this axis is an assumption, and the
+    8.1 arcsec column is the one that is anchored.
+    """
+    window = window or SelectionWindow()
+    params = params or WakeParameters()
+    reference = reference_template(fixture_path)
+    rows: list[dict[str, float | str]] = []
+
+    for length in lengths_arcsec:
+        try:
+            sites = collect_sites(
+                fixture_path,
+                destinations_dir,
+                per_tile=per_tile,
+                feature_length_arcsec=length,
+                seed=seed,
+            )
+        except ValueError:
+            # The feature does not fit in the tile at all; record the gap rather than skip it.
+            rows.extend(
+                {
+                    "length_arcsec": length,
+                    "mag": magnitude,
+                    "n": 0.0,
+                    "completeness": float("nan"),
+                    "detection_rate": float("nan"),
+                    "fragmentation": float("nan"),
+                    "note": "does not fit in tile",
+                }
+                for magnitude in magnitudes
+            )
+            continue
+
+        for magnitude in magnitudes:
+            local = replace(
+                params,
+                length_arcsec=length,
+                total_mag_ab=magnitude,
+                colour_ab=reference.colour_ab,
+            )
+            got = _run_parametric(
+                sites, local, psf_fwhm_arcsec=psf_fwhm_arcsec, window=window, seed=seed
+            )
+            rows.append(
+                {
+                    "length_arcsec": length,
+                    "mag": magnitude,
+                    "note": "",
+                    **got,
+                }
+            )
+    return rows
+
+
+def mean_surface_brightness(
+    total_mag_ab: float, length_arcsec: float, width_arcsec: float
+) -> float:
+    """Mean surface brightness in mag per square arcsec, for a feature of this size.
+
+    Reported alongside the completeness grid because magnitude alone is misleading across the
+    length axis: at fixed total magnitude a longer feature is spread thinner, so it is fainter
+    per unit area and harder to detect even though it is nominally "the same brightness".
+    """
+    area = max(length_arcsec * width_arcsec, 1e-9)
+    return total_mag_ab + 2.5 * math.log10(area)
 
 
 def half_completeness_limit(magnitudes: Sequence[float], completeness: Sequence[float]) -> float:

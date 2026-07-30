@@ -340,6 +340,50 @@ def controls(
     typer.echo(f"\nwrote {out}")
 
 
+@app.command("completeness-length")
+def completeness_length(
+    destinations: Annotated[
+        Path, typer.Option(help="Directory of cached destination tiles.")
+    ] = Path("data/controls"),
+    out: Annotated[Path, typer.Option(help="Where to write the grid.")] = Path(
+        "runs/completeness-length.json"
+    ),
+    per_tile: Annotated[int, typer.Option(help="Injection sites per tile.")] = 3,
+) -> None:
+    """Measure completeness across feature length as well as brightness.
+
+    Note the tiling constraint: with 20 arcsec tiles nothing longer than about 16 arcsec fits,
+    so this cannot cover the full 2-25 arcsec selection window. Cells that do not fit are
+    reported as such rather than silently omitted.
+    """
+    import json
+
+    from rbh.studies import completeness_vs_length, mean_surface_brightness
+    from rbh.synthetic import WakeParameters
+
+    rows = completeness_vs_length(FIXTURE_PATH, destinations, per_tile=per_tile)
+    width = WakeParameters().width_arcsec
+
+    lengths = sorted({float(r["length_arcsec"]) for r in rows})
+    mags = sorted({float(r["mag"]) for r in rows})
+    typer.echo("completeness (%), rows = length, columns = total magnitude")
+    typer.echo("length" + "".join(f"{m:>10.1f}" for m in mags) + "   mean SB at faintest")
+    for length in lengths:
+        cells = []
+        for mag in mags:
+            match = [
+                r for r in rows if float(r["length_arcsec"]) == length and float(r["mag"]) == mag
+            ]
+            value = float(match[0]["completeness"]) if match else float("nan")
+            cells.append("     n/a" if math.isnan(value) else f"{100 * value:>8.0f}")
+        surface = mean_surface_brightness(mags[-1], length, width)
+        typer.echo(f"{length:>6.1f}" + "".join(f"{c:>10}" for c in cells) + f"{surface:>16.1f}")
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps({"width_arcsec": width, "rows": rows}, indent=1), encoding="utf-8")
+    typer.echo(f"\nwrote {out}")
+
+
 @app.command("fetch-destinations")
 def fetch_destinations(
     count: Annotated[int, typer.Option(help="How many destination tiles to cache.")] = 12,
