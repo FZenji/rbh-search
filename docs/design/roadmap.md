@@ -95,6 +95,9 @@ RBH-1 itself sits at 23.77, comfortably in the flat 100% region. The 50% limit i
 **24.61**, and varies by only **0.14 mag** across the full clumpiness range — the headline
 robustness result, discussed in the ADR amendment.
 
+Read the spread, not the ordering: a half-sample rerun reproduces the small spread but
+scrambles the order, so the apparent monotonic trend with clumpiness is sample noise.
+
 Detection rate stays at 77–84% at mag 25.3 where completeness has fallen to 0–7%: at the
 faint end sources *are* found, but arrive too fragmented or too short to pass the selection
 window. Recording the two separately was therefore necessary, not pedantic.

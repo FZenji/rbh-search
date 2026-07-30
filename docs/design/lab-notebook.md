@@ -46,6 +46,21 @@ Phase 2 measurement robust.
 
 44 injection sites across 11 real archival tiles; binomial uncertainty ±7.5% at p = 0.5.
 
+### Reproduction check (half the sites)
+
+Re-running through the promoted `rbh completeness` command at `--per-tile 2` (22 sites
+instead of 44) gives limits of 24.70 / 24.62 / 24.53 / 24.62 / 24.55, spread **0.17 mag**.
+
+Two conclusions, one reassuring and one corrective:
+
+- **The headline survives.** The spread stays ~0.15 mag, and every limit sits within about
+  0.1 mag of the 44-site value — consistent with the ±10.7% binomial noise at n = 22.
+- **The apparent monotonic rise with clumpiness does not reproduce.** In the 44-site run the
+  limits ordered neatly 24.60 < 24.68 < 24.69 < 24.74; at 22 sites the ordering vanishes.
+  That trend was flagged as ~1.9σ at the time and it was right to flag it: it was sample
+  noise. **Do not read the ordering in the tables as a real effect** — only the smallness of
+  the spread is established.
+
 ### Calibration outcome
 
 | | length | width | axis ratio | fragmentation |

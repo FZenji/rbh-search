@@ -162,7 +162,11 @@ limit is:
 | Parametric, clumpiness 0.9 | 24.74 |
 
 A spread of **0.14 mag across the entire plausible range** of the one morphological property
-we cannot constrain from a single object. Fragmentation over that same range climbs from
+we cannot constrain from a single object.
+
+Read the *spread*, not the ordering. Those limits happen to increase monotonically with
+clumpiness here, and that is not significant: a half-sample rerun reproduces the small
+spread but scrambles the order. Only the smallness is established. Fragmentation over that same range climbs from
 about 68% to 100%, so clumpiness is doing exactly what was expected to the *detector* - the
 reason it barely reaches the *catalogue* is that collinear fragment linking
 ([ADR-0016](0016-rejoin-collinear-fragments.md)) absorbs it.
