@@ -226,6 +226,105 @@ def _fmt(stats: dict[str, float]) -> str:
     )
 
 
+@app.command()
+def controls(
+    tiles_dir: Annotated[
+        Path, typer.Option(help="Directory of real sky tiles to run the controls over.")
+    ] = Path("data/controls"),
+    out: Annotated[Path, typer.Option(help="Where to write the control results.")] = Path(
+        "runs/controls.json"
+    ),
+    noise_realisations: Annotated[
+        int, typer.Option(help="How many pure-noise tiles to generate.")
+    ] = 40,
+) -> None:
+    """Measure what the pipeline finds when there is nothing to find.
+
+    Runs four negative controls, each with fragment linking on and off, so the cost of
+    linking is a paired comparison on identical pixels. This settles the debt ADR-0016 left
+    open: it adopted linking while noting the false-positive cost had to be measured.
+    """
+    import json
+
+    from rbh.controls import (
+        ControlResult,
+        linking_cost,
+        noise_tiles,
+        run_control,
+        shuffled_filter_tiles,
+        transformed_tiles,
+    )
+    from rbh.tileio import read_tile
+
+    real = [read_tile(p) for p in sorted(tiles_dir.glob("*.fits"))]
+    if not real:
+        typer.echo(f"no tiles found in {tiles_dir}; run 'rbh fetch-destinations' first", err=True)
+        raise typer.Exit(1)
+
+    area_arcsec2 = sum(t.shape[0] * t.shape[1] * t.pixel_scale_arcsec**2 for t in real)
+    typer.echo(
+        f"{len(real)} real tiles, {area_arcsec2 / 3600:.2f} arcmin^2 "
+        f"({area_arcsec2 / 3600**2:.2e} deg^2)"
+    )
+
+    import numpy as np
+
+    from rbh.tile import Tile
+
+    rng = np.random.default_rng(20230208)
+    suites: dict[str, list[Tile]] = {
+        "noise": noise_tiles(real[0], noise_realisations, rng=rng),
+        "real sky": real,
+        "rotated 90": transformed_tiles(real, quadrant_rotations=1, mirror=False),
+        "mirrored": transformed_tiles(real, quadrant_rotations=0, mirror=True),
+        "shuffled filters": shuffled_filter_tiles(real),
+    }
+
+    typer.echo(
+        f"\n{'control':<18}{'link':>7}{'tiles':>7}{'arcmin2':>9}{'raw':>7}"
+        f"{'survive':>9}{'per deg2':>18}"
+    )
+    measured: dict[str, dict[bool, ControlResult]] = {}
+    for label, suite in suites.items():
+        if not suite:
+            typer.echo(f"{label:<18}  (no usable tiles, skipped)")
+            continue
+        measured[label] = {}
+        for link in (False, True):
+            result = run_control(suite, label, link=link)
+            measured[label][link] = result
+            typer.echo(
+                f"{label:<18}{link!s:>7}{result.n_tiles:>7}"
+                f"{result.area_arcsec2 / 3600:>9.2f}{result.raw_detections:>7}"
+                f"{result.survivors:>9}"
+                f"{result.survivors_per_deg2:>11.0f} +/- {result.poisson_error_per_deg2:<.0f}"
+            )
+
+    typer.echo("\ncost of fragment linking (paired, identical pixels):")
+    costs = {}
+    for label, arms in measured.items():
+        cost = linking_cost(arms[True], arms[False])
+        costs[label] = cost
+        typer.echo(
+            f"  {label:<18} {cost['survivors_without_linking']:.0f} -> "
+            f"{cost['survivors_with_linking']:.0f} survivors "
+            f"(x{cost['ratio']:.2f}, {cost['added_by_linking']:+.0f})"
+        )
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
+        json.dumps(
+            {
+                "results": [r.to_dict() for arms in measured.values() for r in arms.values()],
+                "linking_cost": costs,
+            },
+            indent=1,
+        ),
+        encoding="utf-8",
+    )
+    typer.echo(f"\nwrote {out}")
+
+
 @app.command("fetch-destinations")
 def fetch_destinations(
     count: Annotated[int, typer.Option(help="How many destination tiles to cache.")] = 12,
@@ -233,7 +332,14 @@ def fetch_destinations(
         Path,
         typer.Option(help="Cache directory. Git-ignored by design."),
     ] = Path("data/destinations"),
-    seed: Annotated[int, typer.Option(help="Seed for the tile positions.")] = 20230208,
+    seed: Annotated[int, typer.Option(help="Seed for random tile positions.")] = 20230208,
+    layout: Annotated[
+        str,
+        typer.Option(help="'grid' for non-overlapping tiles, 'random' for scattered ones."),
+    ] = "grid",
+    half_size: Annotated[
+        int, typer.Option(help="Half-width of each cutout in pixels.")
+    ] = RBH1_FIXTURE.half_size_pixels,
     uri: Annotated[
         list[str] | None,
         typer.Option(
@@ -241,12 +347,17 @@ def fetch_destinations(
         ),
     ] = None,
 ) -> None:
-    """Cache real sky tiles from the RBH-1 discovery visit, for injection-recovery.
+    """Cache real sky tiles from the RBH-1 discovery visit.
 
-    These are the destinations synthetic and transplanted wakes get injected into. Using
-    the same visit means the same instrument, depth and epoch as the one object we can
-    calibrate against, so a completeness measured here is directly comparable to the
-    Phase 1 recovery. Requires network access; results are cached and git-ignored.
+    These are the destinations synthetic and transplanted wakes get injected into, and the
+    real sky the negative controls run over. Using the same visit means the same instrument,
+    depth and epoch as the one object we can calibrate against.
+
+    The default ``grid`` layout places tiles so they cannot overlap, which matters for the
+    controls: a false-positive *rate* needs a known area, and randomly scattered tiles
+    double-count sky. ``random`` reproduces the earlier scattered layout.
+
+    Requires network access; results are cached and git-ignored.
     """
     import numpy as np
 
@@ -259,27 +370,28 @@ def fetch_destinations(
         raise typer.Exit(1)
 
     rng = np.random.default_rng(seed)
+    cos_dec = math.cos(math.radians(RBH1_FIXTURE.centre_dec_deg))
+    offsets = (
+        _grid_offsets(count, half_size)
+        if layout == "grid"
+        else [(float(rng.uniform(-48, 48)), float(rng.uniform(-48, 48))) for _ in range(count)]
+    )
     out_dir.mkdir(parents=True, exist_ok=True)
     written = 0
-    # Offsets in arcmin around the visit centre, avoiding the RBH-1 position itself.
-    for index in range(count):
+    for index, (dx_arcsec, dy_arcsec) in enumerate(offsets):
         path = out_dir / f"dest_{index:03d}.fits"
         if path.exists():
             typer.echo(f"  {path.name} already cached")
             written += 1
             continue
-        # Offsets in arcmin, kept small enough that a 20 arcsec cutout stays inside the
-        # ACS/WFC mosaic even at the corners of the range.
-        offset_ra = float(rng.uniform(-0.8, 0.8)) / 60.0
-        offset_dec = float(rng.uniform(-0.8, 0.8)) / 60.0
-        ra = RBH1_FIXTURE.centre_ra_deg + offset_ra
-        dec = RBH1_FIXTURE.centre_dec_deg + offset_dec
+        ra = RBH1_FIXTURE.centre_ra_deg + dx_arcsec / 3600.0 / cos_dec
+        dec = RBH1_FIXTURE.centre_dec_deg + dy_arcsec / 3600.0
         try:
             tile = fetch_tile(
                 ra,
                 dec,
                 uris,
-                half_size_pixels=RBH1_FIXTURE.half_size_pixels,
+                half_size_pixels=half_size,
                 proposal_id=RBH1.discovery_proposal_id,
             )
         except (ValueError, OSError) as error:
@@ -291,7 +403,27 @@ def fetch_destinations(
         write_tile(tile, path)
         written += 1
         typer.echo(f"  wrote {path.name} at {ra:.5f} {dec:+.5f}")
-    typer.echo(f"{written} destination tiles in {out_dir}")
+    typer.echo(f"{written} tiles in {out_dir}")
+
+
+def _grid_offsets(count: int, half_size_pixels: int) -> list[tuple[float, float]]:
+    """Return non-overlapping tile offsets in arcsec, spiralling out from the centre.
+
+    Spacing is one tile width plus a small margin, so no two tiles share a pixel and the
+    total searched area is exactly ``count`` times the tile area. Ordering outward from the
+    centre keeps the tiles inside the mosaic for as long as possible.
+    """
+    pitch = (2 * half_size_pixels + 8) * 0.05
+    ring, offsets = 0, [(0.0, 0.0)]
+    while len(offsets) < count:
+        ring += 1
+        offsets.extend(
+            (i * pitch, j * pitch)
+            for i in range(-ring, ring + 1)
+            for j in range(-ring, ring + 1)
+            if max(abs(i), abs(j)) == ring
+        )
+    return offsets[:count]
 
 
 @app.command("fetch-fixture")
