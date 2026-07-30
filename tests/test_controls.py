@@ -11,6 +11,7 @@ from rbh.controls import (
     ControlResult,
     count_survivors,
     linking_cost,
+    noise_model_scatter,
     noise_tiles,
     run_control,
     shuffled_filter_tiles,
@@ -150,6 +151,61 @@ def test_linking_cost_handles_a_zero_baseline() -> None:
         ControlResult("n", True, 1, 400.0, 3, 2), ControlResult("n", False, 1, 400.0, 3, 0)
     )
     assert linking_added_some["ratio"] == float("inf")
+
+
+def test_noise_model_scatter_is_unity_for_a_correct_noise_map(
+    rng: np.random.Generator,
+) -> None:
+    """The S/N image must have unit scatter at every coverage level, by construction.
+
+    The weight distribution is deliberately realistic - a clear majority at full depth plus
+    a shallower strip - because that is what makes a median weight meaningful. It also makes
+    this a regression test for the reference-weight fix in ``background_and_sigma``: with the
+    sigma estimated over the whole band instead, the majority and minority noise levels
+    average together and both bins come out near 0.83 rather than 1.0.
+    """
+    tiles = []
+    for _ in range(3):
+        weight = np.full(SHAPE, 1000.0, dtype=np.float32)
+        weight[:, 200:] = 250.0  # a quarter of the depth over ~22% of the tile
+        science = rng.normal(0.0, 1.0, size=SHAPE).astype(np.float32)
+        science[:, 200:] *= 2.0  # ...so genuinely twice the noise there
+        tile = make_tile({"F606W": science})
+        tile.bands[0].weight[:, :] = weight
+        tiles.append(tile)
+
+    measured = noise_model_scatter(tiles, weight_bins=((0.0, 0.5), (0.5, 10.0)))
+    assert len(measured) == 2, "expected both weight bins to be populated"
+    for scatter, count in measured.values():
+        assert count > 500
+        assert scatter == pytest.approx(1.0, abs=0.12)
+
+
+def test_noise_model_scatter_detects_a_weight_correlated_error(
+    rng: np.random.Generator,
+) -> None:
+    """The check must notice when the weight map mis-states how depth varies.
+
+    Its leverage comes from binning on weight, so what it detects is error *correlated with*
+    weight. A uniform weight map that understates the noise everywhere is invisible to it by
+    construction, and that is the honest limit of the test rather than a defect: with no
+    variation in the claimed depth there is nothing to compare against.
+
+    Here the weight map claims a 16-fold depth change (so 4x the noise) while the pixels are
+    only 2x noisier, and the two bins must disagree.
+    """
+    weight = np.full(SHAPE, 1000.0, dtype=np.float32)
+    weight[:, 128:] = 1000.0 / 16.0
+    science = rng.normal(0.0, 1.0, size=SHAPE).astype(np.float32)
+    science[:, 128:] *= 2.0
+    tile = make_tile({"F606W": science})
+    tile.bands[0].weight[:, :] = weight
+
+    measured = noise_model_scatter([tile], weight_bins=((0.0, 0.5), (0.5, 10.0)))
+    assert len(measured) == 2
+    low = measured[(0.0, 0.5)][0]
+    high = measured[(0.5, 10.0)][0]
+    assert abs(low - high) > 0.3, f"bins should disagree, got {low:.2f} and {high:.2f}"
 
 
 def test_linking_never_reduces_survivors_on_the_same_pixels(noise_field: np.ndarray) -> None:

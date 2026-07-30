@@ -111,9 +111,16 @@ one it guessed: over 33 arcmin² of **pure noise** linking added exactly zero (n
 positives < ~108/deg² either way). What it joins is unrelated collinear *real sources*.
 
 Inspecting every survivor individually: two are unambiguous spurious joins, one is a real
-edge-on galaxy reassembled from its fragments, one lies inside an unmasked region of detector
-striping, and one passes regardless of linking. Two follow-ups fall out — a maximum
-gap-to-length ratio, and a data-quality cut — both recorded in the ADR amendment.
+edge-on galaxy reassembled from its fragments, and two are unremarkable. Two mitigations were
+proposed and **measurement rejected both** — a gap-to-length ratio does not separate spurious
+joins from real objects, and no coverage cut is warranted because the noise model already
+holds to within 7% across a hundred-fold range in weight. The right lever is the
+wake-versus-disc scoring of [ADR-0008](../adr/0008-scored-discriminants-not-cuts.md), which is
+Phase 4. Details and a correction in the ADR amendment.
+
+Also validated as a side effect: the `1/sqrt(weight)` noise model, now a permanent check
+(`rbh.controls.noise_model_scatter`). Every threshold in the pipeline is denominated in that
+map, so knowing it is right to 7% matters more than it sounds.
 
 Also measured: the selection window rejects **~99%** of raw detections; the detector is
 exactly invariant under quadrant rotation and reflection; and shuffled-filter pairings yield

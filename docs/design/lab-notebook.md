@@ -56,13 +56,35 @@ Eyeballing every survivor (figure: [`docs/data/phase2-control-candidates.png`](.
 | `dest_008` | two unrelated compact sources, well separated | spurious join |
 | `dest_016` | compact source plus a nearby knot | spurious join |
 | `dest_013` | elongated bright object, almost certainly an edge-on galaxy | reassembled one real object |
-| `dest_018` | inside a region of visible vertical detector striping | joined fragments inside an artifact |
+| `dest_018` | unremarkable field — see the correction below | joined fragments of something faint |
 | `dest_015` | thin streak, passes with and without linking | none |
 
-Two actions fall out, both recorded in the ADR amendment: add a maximum gap-to-length ratio
-(both spurious joins bridge a gap comparable to the fragments themselves, which a real wake's
-closely-spaced knots never would), and add a data-quality cut, because `dest_018` should
-never have been searched at all.
+Two follow-ups were proposed on the strength of this, and **measurement rejected both**. See
+below. The spurious joins therefore stand unmitigated; the right lever is the wake-versus-disc
+scoring of [ADR-0008](../adr/0008-scored-discriminants-not-cuts.md), which is Phase 4.
+
+### The noise model is sound across coverage
+
+Worth having as a positive result, since every threshold in the pipeline is denominated in the
+noise map. The scatter of the signal-to-noise image should be exactly 1.0 everywhere by
+construction. Measured over 20 tiles, in bins of weight relative to the tile median:
+
+| weight / median | 0–0.3 | 0.3–0.5 | 0.5–0.7 | 0.7–0.9 | 0.9–1.05 | > 1.05 |
+|---|---|---|---|---|---|---|
+| S/N scatter | 0.99 | 0.96 | 0.99 | 0.98 | 0.97 | 0.93 |
+
+Within 7% of unity over a hundred-fold range in weight, and biased slightly *conservative*
+(below one means the map marginally overestimates the noise, so thresholds are marginally
+stricter than nominal). The `1/sqrt(weight)` scaling holds. Now a permanent check,
+`rbh.controls.noise_model_scatter`.
+
+It did surface one real flaw: `background_and_sigma` measured the sigma over the whole band
+while `noise_map` scales it from the *median* weight, so the normalisation is off by a constant
+whenever weights are broadly spread — 1.8x on a synthetic half-and-half tile. Now measured from
+pixels near the reference weight. On real data it is a no-op (RBH-1's recovery is unchanged to
+four significant figures), but it is correct rather than approximately correct. Note it cannot
+help a strongly *bimodal* weight map, where the median describes no actual pixel; such a map
+cannot be normalised from a single sigma at all.
 
 ### Other control results
 
@@ -95,6 +117,25 @@ coverage.
 reference position, so `dest_000` is the RBH-1 discovery field: its centre is 4.0 arcsec from
 the published coordinate. One of the "false positives" in blank sky was RBH-1 itself. The
 `controls` command now takes `--exclude`, and any field with a known object must be dropped.
+
+**Called `dest_018` "visible vertical detector striping". It is not striped.** Column and row
+striping significances are 2.2 and 2.1 — indistinguishable from clean tiles — and with a
+stretch matched across tiles the field is unremarkable. The apparent banding came from
+per-panel zscale in the inspection figure: a low-contrast crop gets stretched hard and ordinary
+noise turns into visible stripes. **Lesson: never judge background quality from stamps at
+independent stretches.** Compare at a shared stretch, or better, use a statistic.
+
+**Proposed two follow-up cuts; measurement rejected both.**
+
+- *Maximum gap-to-length ratio.* Gap over union-span came out 0.30 and 0.39 for the two
+  spurious joins, against 0.40 for the real galaxy and 0.18 for `dest_018`. The classes are
+  not separated, so any cut that kills the spurious joins kills a real object too. Also worth
+  noting: RBH-1's own field produces **no** linkable pairs at default thresholds, so the one
+  real example could not have constrained such a cut at all — exactly the unconstrained tuning
+  ADR-0010 exists to prevent.
+- *Coverage-based data-quality cut.* Not warranted: see the noise-model result above. The
+  suspicion was reasonable — `dest_013` really does sit in poor coverage, 30% of pixels below
+  0.8x median weight against 5–12% typical — but the noise model already absorbs it.
 
 ---
 

@@ -98,25 +98,47 @@ Inspecting each survivor by eye:
 | `dest_008` | two unrelated compact sources, well separated | **spurious join** |
 | `dest_016` | a compact source plus a nearby knot | **spurious join** |
 | `dest_013` | an elongated bright object, almost certainly an edge-on galaxy | joined fragments of one real object |
-| `dest_018` | sits in a region of visible vertical detector striping | joined fragments inside an artifact |
+| `dest_018` | an unremarkable field; see the correction below | joined fragments of something faint |
 | `dest_015` | a thin streak; passes with **and** without linking | none |
 
-Of the four objects linking adds: two are unambiguously spurious joins of unrelated sources,
-one is a real galaxy whose fragments were reassembled — the
-[ADR-0008](0008-scored-discriminants-not-cuts.md) contaminant rather than a linking failure —
-and one is inside an artifact region that should never have been searched at all.
+Of the four objects linking adds, two are unambiguously spurious joins of unrelated sources
+and one is a real galaxy whose fragments were reassembled — the
+[ADR-0008](0008-scored-discriminants-not-cuts.md) contaminant rather than a linking failure.
+
+### Correction, and two follow-ups that the data rejected
+
+An earlier version of this amendment described `dest_018` as sitting "in a region of visible
+vertical detector striping". **That was wrong.** Its column and row striping significances are
+2.2 and 2.1, statistically indistinguishable from clean control tiles, and with a stretch
+matched across tiles the field looks unremarkable. The apparent striping was an artefact of
+per-panel zscale in the inspection figure, which stretches a low-contrast crop hard and
+amplifies ordinary noise into visible banding. A lesson about eyeballing stamps at
+independent stretches, recorded in the lab notebook.
+
+That correction removed the motivation for one proposed follow-up, and measurement removed the
+other:
+
+- **A maximum gap-to-length ratio does not separate the classes.** Measured gap over
+  union-span: `dest_016` 0.30 and `dest_008` 0.39 (both spurious) against `dest_013` 0.40 (a
+  real galaxy) and `dest_018` 0.18. Any cut that removes the spurious joins removes the real
+  object too. Not implemented.
+- **No coverage-based data-quality cut is warranted.** `dest_013` does sit in genuinely poor
+  coverage — 30% of its pixels below 0.8x the median weight, against 5-12% for a typical tile
+  — but the noise model already handles it. Measured over 20 tiles, the scatter of the
+  signal-to-noise image is 0.93-0.99 across a hundred-fold range in weight: within 7% of
+  unity and biased slightly conservative. There is nothing for a cut to fix. That check is now
+  :func:`rbh.controls.noise_model_scatter`.
+
+So the spurious joins stand unmitigated for now. The right lever is not a geometric cut but
+the wake-versus-disc scoring of [ADR-0008](0008-scored-discriminants-not-cuts.md): two
+unrelated compact blobs bridged by nothing should fail on longitudinal asymmetry, terminal-knot
+contrast and colour gradient, none of which is implemented yet. Deferred to Phase 4 rather
+than patched with a cut that does not work.
 
 **The Decision stands.** Completeness measured in Phase 2 is robust to clumpiness precisely
 *because* linking absorbs fragmentation ([ADR-0017](0017-synthetic-realism.md) amendment),
 and a five-fold rise in a candidate rate of order 10³–10⁴ per deg² is still affordable
-against a human vetting budget. But the trade is now quantified rather than hoped about, and two
-follow-ups are implied:
-
-- **Add a maximum-gap-to-length ratio.** Both spurious joins bridge a gap comparable to the
-  fragments themselves. A wake's knots are closely spaced relative to its length; two blobs
-  1.5 arcsec apart with nothing between them are not one object.
-- **Mask low-quality regions.** `dest_018` should never have been searched. There is no
-  data-quality cut beyond the weight map, and the visible striping says one is needed.
+against a human vetting budget. But the trade is now quantified rather than hoped about.
 
 ## Alternatives considered
 
