@@ -132,8 +132,11 @@ cross-filter assumption behaving as advertised.
 The completeness grid above is one slice, not a selection function. Still to do:
 
 - **Other lengths, inclinations and colours.** Everything above is at 8.1″ and one colour.
-- **Labelled edge-on disks** as the discriminator's negative class, for a ROC curve. The
-  controls turned up one by accident; a catalogue-driven sample is the real job.
+- **A representative edge-on disc sample.** Started: `rbh.negatives` harvests them from real
+  tiles by segmentation photometry, and the stage 6 features are measured against them for the
+  first time (see the [ADR-0008 amendment](../adr/0008-scored-discriminants-not-cuts.md)). But
+  2.1 arcmin² yields only nine, at axis ratio 3.1–4.5 — rounder than the ≥ 8 the window
+  demands, so not yet representative. Needs Phase 3 area.
 - **Cross-visit artifact control**, which is the test the rotation control cannot be. Needs
   multi-visit coverage, so it is really Phase 3.
 - **Blind human discrimination** (step 6).

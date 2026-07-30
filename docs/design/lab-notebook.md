@@ -29,6 +29,66 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-07-30 — Phase 2: the wake-versus-disc features
+
+Built the stage 6 feature vector ([ADR-0008](../adr/0008-scored-discriminants-not-cuts.md))
+and a harvester for its negative class, then measured how well the features actually
+separate. Positives: 29 recovered RBH-1 transplants. Negatives: 9 elongated sources harvested
+from the control tiles by segmentation photometry — deliberately a *different* detector from
+the ridge filter, since using the same one would select only the galaxies that already look
+like ridges, which is circular.
+
+AUC for "wake scores higher":
+
+| feature | wakes | galaxies | AUC | verdict |
+|---|---|---|---|---|
+| `transverse_colour_dip` | −0.185 | +0.050 | **0.12** | strongest; discs higher, as designed |
+| `terminal_knot_contrast` | 1.55 | 1.75 | 0.26 | **reversed** — discs are more concentrated |
+| `longitudinal_asymmetry` | 0.042 | 0.032 | 0.57 | no useful separation |
+| `filling_factor` | 1.00 | 1.00 | 0.43 | none for wake/disc — but see below |
+
+**Three of four behaved differently from their design.** Only the colour dip worked as
+predicted. Worth being specific about why the others failed, because the reasons generalise:
+
+- *Longitudinal asymmetry* assumed we see the whole wake. We do not — only the bright middle
+  is detected, and that part is roughly symmetric. The asymmetry lives in the faint tail the
+  detector never reaches. A feature can only measure what got detected.
+- *Terminal knot contrast* discriminates in reverse: galaxies have bright centres, so they
+  score *higher* on peak-over-median than wakes do. Still informative, but it is a
+  central-concentration statistic favouring discs, not a terminal-knot detector.
+
+**The features do solve the spurious-join problem**, which was the question worth asking:
+
+| | filling | asymmetry | knot contrast |
+|---|---|---|---|
+| transplanted wakes | 1.00 | 0.04 | 1.55 |
+| real galaxies | 1.00 | 0.03 | 1.75 |
+| **spurious joins** | **0.80** | **0.15–0.18** | **2.3–5.8** |
+
+The two spurious linking joins separate cleanly from *both* real classes on three features at
+once. So the [ADR-0016](../adr/0016-rejoin-collinear-fragments.md) false positives are
+tractable by scoring even though no geometric cut could touch them — which is what
+[ADR-0008](../adr/0008-scored-discriminants-not-cuts.md) predicted in general terms.
+
+### Caveats that outweigh the numbers
+
+- **The negative sample is nine objects at axis ratio 3.1–4.5**, far rounder than the ≥ 8 the
+  selection window demands. These are not yet the contaminants we actually face. 2.1 arcmin²
+  of sky simply does not contain many thin edge-on discs; a representative sample needs
+  Phase 3 area.
+- **The strongest discriminant in ADR-0008 is not computable here at all.** Both filters are
+  optical, and at z ≈ 1 even F814W samples rest-frame ~4100 Å, so there is no rest-frame
+  near-infrared measurement to be had. Fields with WFC3/IR or NIRCam will do better — an
+  argument for the Tier A prioritisation in ADR-0006.
+- **The colour dip may be measuring thinness, not dust.** For a feature narrower than the
+  sampling strip the "flanks" are largely empty sky, so part of the signal could be the
+  absence of flux rather than the presence of a dust lane. Untangling that needs a wider
+  feature or a narrower strip.
+
+Treat these AUCs as a first look, not a calibration. No weights fitted, no threshold set.
+
+---
+
 ## 2026-07-30 — Phase 2: negative controls
 
 ### What fragment linking costs

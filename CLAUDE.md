@@ -65,7 +65,9 @@ measured, a gotcha hit, an assumption disproved. Context gets compressed; the re
 | `template.py` | Cuts the real RBH-1 out as a transplantable template (ADR-0017). |
 | `inject.py` | Adds sources to real tiles, including the `(1 − f²)σ²` noise compensation. |
 | `recovery.py` | Injection–recovery trials and completeness. |
-| `controls.py` | Negative controls: noise, real sky, rotated/mirrored, shuffled filters. |
+| `controls.py` | Negative controls: noise, real sky, rotated/mirrored, shuffled filters, noise-model check. |
+| `discriminate.py` | Stage 6 wake-vs-disc features. Docstrings record **measured** power, not intended. |
+| `negatives.py` | Harvests real elongated galaxies as the discriminator's negative class. |
 | `studies.py` | The measurement studies behind published numbers. Never put these in a scratch script. |
 
 ## Phase 2 gotchas worth knowing

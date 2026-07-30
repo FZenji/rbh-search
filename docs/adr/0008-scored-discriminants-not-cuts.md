@@ -55,6 +55,39 @@ weighting can re-rank the catalogue without re-running the sweep.
 Hard cuts remain acceptable for **instrumental** vetting, where the signature is
 deterministic and the physics is not in dispute.
 
+## Amendment, 2026-07-30 (first measurement of the features)
+
+The feature vector now exists (`rbh.discriminate`) along with a harvester for its negative
+class (`rbh.negatives`), and the features have been measured against real objects for the
+first time: 29 recovered RBH-1 transplants versus 9 elongated galaxies harvested from the
+control tiles.
+
+**Three of the four features behave differently from their design.** Only the transverse
+colour dip discriminates in the intended direction. Terminal-knot contrast discriminates in
+*reverse* — galaxies have bright centres and score higher — and longitudinal asymmetry does
+not discriminate at all, because only the bright middle of a wake is detected and that part
+is roughly symmetric. The full table is in the lab notebook and in the `WakeFeatures`
+docstring, which now records measured power rather than intended power.
+
+This is the Decision working as designed. Because the features are stored rather than cut on,
+discovering that one runs backwards costs nothing: it re-weights, it does not invalidate a
+catalogue. Had these been hard cuts, two of the four would have been actively removing the
+wrong objects.
+
+**The features do separate the spurious linking joins from both real classes** — filling
+factor 0.80 against 1.00, asymmetry 0.15-0.18 against 0.03-0.04, knot contrast 2.3-5.8 against
+1.5-1.8. That matters because a geometric gap cut could not
+([ADR-0016](0016-rejoin-collinear-fragments.md) amendment): scoring solves a problem cutting
+could not, which is this ADR's central claim, tested.
+
+**Two limits worth stating plainly.** The negative sample is nine objects at axis ratio
+3.1-4.5, considerably rounder than the ratio >= 8 the selection window demands, so it is not
+yet representative of real contaminants; 2.1 arcmin^2 of sky does not contain many thin
+edge-on discs, and a proper sample needs Phase 3 area. And the discriminant this ADR rates
+highest, the rest-frame near-infrared counterpart, is **not computable in this field at all**:
+both filters are optical and at z ~ 1 even F814W samples rest-frame ~4100 A. No weights have
+been fitted and no threshold set.
+
 ## Consequences
 
 - Nothing is thrown away on an astrophysical judgement call. Low-scoring candidates persist
