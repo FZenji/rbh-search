@@ -67,6 +67,57 @@ had this bug and merged two parallel synthetic lines.
 - Linking is O(N²) in fragments per tile. At the fragment counts seen so far this is
   irrelevant; if a crowded tile ever produces thousands, it will need spatial indexing.
 
+## Amendment, 2026-07-30 (the false-positive cost, measured)
+
+The Consequences section above promised that linking's false-positive cost "must be
+*measured*, not assumed small". It has been. It is not small.
+
+Over 19 non-overlapping archival tiles (2.11 arcmin², the RBH-1 discovery field excluded):
+
+| | Raw ridge detections | Survivors of the selection window | Per deg² |
+|---|---|---|---|
+| Without linking | 261 | **1** | 1700 ± 2400 |
+| With linking | 256 | **5** | 8500 ± 4200 |
+
+A **five-fold increase**, +4 objects. Coarsely measured — the area is small and the Poisson
+errors overlap — but the paired design makes the direction solid. Note the raw count *falls*
+(261 → 256, i.e. five merges) while the survivor count *rises*: merging turns fragments that
+each failed the window into single objects that pass it. That is exactly the mechanism, seen
+working.
+
+**The mechanism is not the one this ADR anticipated.** The Consequences text worried about
+"unrelated collinear *noise* blobs". Noise is not the problem: over 33 arcmin² of pure-noise
+realisations linking added exactly **zero** survivors, and the noise false-positive rate is
+below about 108 per deg² with or without it. What linking actually joins is unrelated
+collinear **real sources**.
+
+Inspecting each survivor by eye:
+
+| Field | What it is | Linking's role |
+|---|---|---|
+| `dest_008` | two unrelated compact sources, well separated | **spurious join** |
+| `dest_016` | a compact source plus a nearby knot | **spurious join** |
+| `dest_013` | an elongated bright object, almost certainly an edge-on galaxy | joined fragments of one real object |
+| `dest_018` | sits in a region of visible vertical detector striping | joined fragments inside an artifact |
+| `dest_015` | a thin streak; passes with **and** without linking | none |
+
+Of the four objects linking adds: two are unambiguously spurious joins of unrelated sources,
+one is a real galaxy whose fragments were reassembled — the
+[ADR-0008](0008-scored-discriminants-not-cuts.md) contaminant rather than a linking failure —
+and one is inside an artifact region that should never have been searched at all.
+
+**The Decision stands.** Completeness measured in Phase 2 is robust to clumpiness precisely
+*because* linking absorbs fragmentation ([ADR-0017](0017-synthetic-realism.md) amendment),
+and a five-fold rise in a candidate rate of order 10³–10⁴ per deg² is still affordable
+against a human vetting budget. But the trade is now quantified rather than hoped about, and two
+follow-ups are implied:
+
+- **Add a maximum-gap-to-length ratio.** Both spurious joins bridge a gap comparable to the
+  fragments themselves. A wake's knots are closely spaced relative to its length; two blobs
+  1.5 arcsec apart with nothing between them are not one object.
+- **Mask low-quality regions.** `dest_018` should never have been searched. There is no
+  data-quality cut beyond the weight map, and the visible striping says one is needed.
+
 ## Alternatives considered
 
 - **Tune the threshold to just below the fragmentation cliff.** Simplest, and what the

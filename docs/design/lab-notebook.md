@@ -29,6 +29,75 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-07-30 — Phase 2: negative controls
+
+### What fragment linking costs
+
+Over 19 non-overlapping archival tiles (2.11 arcmin², RBH-1's own field excluded), survivors
+of the selection window went **1 → 5** when linking was enabled — five-fold, +4. Raw
+detections meanwhile *fell*, 261 → 256: five merges happened, and four of them turned
+fragments that each failed the window into single objects that passed it. The debt
+[ADR-0016](../adr/0016-rejoin-collinear-fragments.md) left open is settled, and the cost is
+larger than "assumed small" would have allowed.
+
+Rates: 1700 ± 2400 per deg² unlinked, 8500 ± 4200 linked. The Poisson errors overlap, so the
+*rates* are barely constrained; the paired ratio is what carries the result, since both arms
+see identical pixels.
+
+**The mechanism is not the one ADR-0016 guessed.** It worried about unrelated collinear
+*noise* blobs. Over 33 arcmin² of pure noise, linking added exactly **zero** survivors — the
+noise false-positive rate is under ~108/deg² with or without it. What linking joins is
+unrelated collinear **real sources**.
+
+Eyeballing every survivor (figure: [`docs/data/phase2-control-candidates.png`](../data/phase2-control-candidates.png)):
+
+| Field | What it is | Linking's role |
+|---|---|---|
+| `dest_008` | two unrelated compact sources, well separated | spurious join |
+| `dest_016` | compact source plus a nearby knot | spurious join |
+| `dest_013` | elongated bright object, almost certainly an edge-on galaxy | reassembled one real object |
+| `dest_018` | inside a region of visible vertical detector striping | joined fragments inside an artifact |
+| `dest_015` | thin streak, passes with and without linking | none |
+
+Two actions fall out, both recorded in the ADR amendment: add a maximum gap-to-length ratio
+(both spurious joins bridge a gap comparable to the fragments themselves, which a real wake's
+closely-spaced knots never would), and add a data-quality cut, because `dest_018` should
+never have been searched at all.
+
+### Other control results
+
+- **The selection window rejects ~99% of raw detections** — of order 150 raw ridges per
+  2 arcmin² become 1–5 survivors. That is where purity comes from.
+- **The detector is exactly invariant** under all three quadrant rotations and reflection:
+  identical counts, verified not to be a no-op. Pinned as a test.
+- **Shuffled filters give zero survivors** while producing a comparable number of raw
+  detections. Pairing band A of one field with band B of another destroys the real
+  cross-filter coincidence, and the survivors vanish with it — [ADR-0006](../adr/0006-two-tier-filter-requirement.md)'s
+  assumption behaving as advertised, on small numbers.
+
+### Things that were wrong
+
+**Reported "linking adds zero false positives" on 8 tiles.** With 12 tiles it became 1 → 2,
+with 17 it became 1 → 4, and with 19 it became 1 → 5. The first result was not wrong
+arithmetic, it was an
+under-powered sample being read as a null result. A ratio of 1.00 from one survivor
+constrains nothing; it should have been reported as "no constraint" rather than "no cost".
+Lesson, generally applicable: quote the power alongside the point estimate, or a null is
+indistinguishable from an absence of data.
+
+**Described the rotation control as decoupling sky structure from detector geometry.** It does
+not. Rotating the pixels rotates any detector-frame artifact with them, so nothing is
+isolated. It tests rotation *invariance*, which is worth having but is a different thing. The
+real artifact test is cross-visit — same sky, different roll angle — and needs Phase 3
+coverage.
+
+**The control sample contained the target.** `fetch-destinations --layout grid` starts at the
+reference position, so `dest_000` is the RBH-1 discovery field: its centre is 4.0 arcsec from
+the published coordinate. One of the "false positives" in blank sky was RBH-1 itself. The
+`controls` command now takes `--exclude`, and any field with a known object must be dropped.
+
+---
+
 ## 2026-07-30 — Phase 2: injection–recovery
 
 ### The headline

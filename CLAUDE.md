@@ -65,6 +65,8 @@ measured, a gotcha hit, an assumption disproved. Context gets compressed; the re
 | `template.py` | Cuts the real RBH-1 out as a transplantable template (ADR-0017). |
 | `inject.py` | Adds sources to real tiles, including the `(1 − f²)σ²` noise compensation. |
 | `recovery.py` | Injection–recovery trials and completeness. |
+| `controls.py` | Negative controls: noise, real sky, rotated/mirrored, shuffled filters. |
+| `studies.py` | The measurement studies behind published numbers. Never put these in a scratch script. |
 
 ## Phase 2 gotchas worth knowing
 
@@ -75,6 +77,12 @@ measured, a gotcha hit, an assumption disproved. Context gets compressed; the re
   a joint grid, never one parameter at a time.
 - **`WakeParameters.width_arcsec` is degenerate with the effective PSF** and is not a
   physical claim. See ADR-0017.
+- **`fetch-destinations --layout grid` puts its first tile on the RBH-1 field.** Always pass
+  `--exclude dest_000` to `rbh controls`, or the real object gets counted as a false
+  positive.
+- **A ratio of 1.00 from one survivor is not a null result, it is no constraint.** The
+  linking cost read as "zero cost" on 8 tiles and "five-fold" on 17. Report the power, not
+  just the point estimate.
 - MAST's *query* endpoint times out often; its S3 bucket is reliable. Prefer
   `_resolve_uris` / explicit `--uri` over `find_drizzled_products`.
 - **Anything that produces a published number belongs in `rbh.studies`, not a scratch

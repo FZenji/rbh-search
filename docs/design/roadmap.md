@@ -102,13 +102,33 @@ Detection rate stays at 77–84% at mag 25.3 where completeness has fallen to 0�
 faint end sources *are* found, but arrive too fragmented or too short to pass the selection
 window. Recording the two separately was therefore necessary, not pedantic.
 
+### Negative controls: done, and they cost us something
+
+Over 19 non-overlapping archival tiles (2.11 arcmin², RBH-1's own field excluded), window
+survivors went **1 → 5** with fragment linking enabled — five-fold, +4. That settles the debt
+[ADR-0016](../adr/0016-rejoin-collinear-fragments.md) left open, and the mechanism is not the
+one it guessed: over 33 arcmin² of **pure noise** linking added exactly zero (noise false
+positives < ~108/deg² either way). What it joins is unrelated collinear *real sources*.
+
+Inspecting every survivor individually: two are unambiguous spurious joins, one is a real
+edge-on galaxy reassembled from its fragments, one lies inside an unmasked region of detector
+striping, and one passes regardless of linking. Two follow-ups fall out — a maximum
+gap-to-length ratio, and a data-quality cut — both recorded in the ADR amendment.
+
+Also measured: the selection window rejects **~99%** of raw detections; the detector is
+exactly invariant under quadrant rotation and reflection; and shuffled-filter pairings yield
+zero survivors, which is [ADR-0006](../adr/0006-two-tier-filter-requirement.md)'s
+cross-filter assumption behaving as advertised.
+
 ### Still outstanding for Phase 2
 
-The grid above is one slice, not a selection function. Still to do:
+The completeness grid above is one slice, not a selection function. Still to do:
 
 - **Other lengths, inclinations and colours.** Everything above is at 8.1″ and one colour.
-- **Negative controls** (step 5): noise realisations, rotated and mirrored tiles,
-  known-artifact fields, labelled edge-on disks as the discriminator's negative class.
+- **Labelled edge-on disks** as the discriminator's negative class, for a ROC curve. The
+  controls turned up one by accident; a catalogue-driven sample is the real job.
+- **Cross-visit artifact control**, which is the test the rotation control cannot be. Needs
+  multi-visit coverage, so it is really Phase 3.
 - **Blind human discrimination** (step 6).
 - **Crowded positions.** Injections currently avoid bright sources, so this is completeness
   for uncrowded sky and that restriction is part of the selection function.

@@ -1,0 +1,141 @@
+{
+ "results": [
+  {
+   "label": "noise",
+   "linked": false,
+   "n_tiles": 300,
+   "area_arcsec2": 119999.99999998578,
+   "raw_detections": 0,
+   "survivors": 0,
+   "survivors_per_deg2": 0.0,
+   "poisson_error_per_deg2": 108.00000000001279
+  },
+  {
+   "label": "noise",
+   "linked": true,
+   "n_tiles": 300,
+   "area_arcsec2": 119999.99999998578,
+   "raw_detections": 0,
+   "survivors": 0,
+   "survivors_per_deg2": 0.0,
+   "poisson_error_per_deg2": 108.00000000001279
+  },
+  {
+   "label": "real sky",
+   "linked": false,
+   "n_tiles": 19,
+   "area_arcsec2": 7599.999999999065,
+   "raw_detections": 261,
+   "survivors": 1,
+   "survivors_per_deg2": 1705.2631578949465,
+   "poisson_error_per_deg2": 2411.606285310206
+  },
+  {
+   "label": "real sky",
+   "linked": true,
+   "n_tiles": 19,
+   "area_arcsec2": 7599.999999999065,
+   "raw_detections": 256,
+   "survivors": 5,
+   "survivors_per_deg2": 8526.315789474733,
+   "poisson_error_per_deg2": 4177.024614009722
+  },
+  {
+   "label": "rotated 90",
+   "linked": false,
+   "n_tiles": 19,
+   "area_arcsec2": 7599.999999999065,
+   "raw_detections": 261,
+   "survivors": 1,
+   "survivors_per_deg2": 1705.2631578949465,
+   "poisson_error_per_deg2": 2411.606285310206
+  },
+  {
+   "label": "rotated 90",
+   "linked": true,
+   "n_tiles": 19,
+   "area_arcsec2": 7599.999999999065,
+   "raw_detections": 256,
+   "survivors": 5,
+   "survivors_per_deg2": 8526.315789474733,
+   "poisson_error_per_deg2": 4177.024614009722
+  },
+  {
+   "label": "mirrored",
+   "linked": false,
+   "n_tiles": 19,
+   "area_arcsec2": 7599.999999999065,
+   "raw_detections": 261,
+   "survivors": 1,
+   "survivors_per_deg2": 1705.2631578949465,
+   "poisson_error_per_deg2": 2411.606285310206
+  },
+  {
+   "label": "mirrored",
+   "linked": true,
+   "n_tiles": 19,
+   "area_arcsec2": 7599.999999999065,
+   "raw_detections": 256,
+   "survivors": 5,
+   "survivors_per_deg2": 8526.315789474733,
+   "poisson_error_per_deg2": 4177.024614009722
+  },
+  {
+   "label": "shuffled filters",
+   "linked": false,
+   "n_tiles": 19,
+   "area_arcsec2": 7599.999999999065,
+   "raw_detections": 254,
+   "survivors": 0,
+   "survivors_per_deg2": 0.0,
+   "poisson_error_per_deg2": 1705.2631578949465
+  },
+  {
+   "label": "shuffled filters",
+   "linked": true,
+   "n_tiles": 19,
+   "area_arcsec2": 7599.999999999065,
+   "raw_detections": 251,
+   "survivors": 0,
+   "survivors_per_deg2": 0.0,
+   "poisson_error_per_deg2": 1705.2631578949465
+  }
+ ],
+ "linking_cost": {
+  "noise": {
+   "survivors_with_linking": 0.0,
+   "survivors_without_linking": 0.0,
+   "added_by_linking": 0.0,
+   "ratio": 1.0,
+   "area_deg2": 0.009259259259258162
+  },
+  "real sky": {
+   "survivors_with_linking": 5.0,
+   "survivors_without_linking": 1.0,
+   "added_by_linking": 4.0,
+   "ratio": 5.0,
+   "area_deg2": 0.0005864197530863476
+  },
+  "rotated 90": {
+   "survivors_with_linking": 5.0,
+   "survivors_without_linking": 1.0,
+   "added_by_linking": 4.0,
+   "ratio": 5.0,
+   "area_deg2": 0.0005864197530863476
+  },
+  "mirrored": {
+   "survivors_with_linking": 5.0,
+   "survivors_without_linking": 1.0,
+   "added_by_linking": 4.0,
+   "ratio": 5.0,
+   "area_deg2": 0.0005864197530863476
+  },
+  "shuffled filters": {
+   "survivors_with_linking": 0.0,
+   "survivors_without_linking": 0.0,
+   "added_by_linking": 0.0,
+   "ratio": 1.0,
+   "area_deg2": 0.0005864197530863476
+  }
+ }
+}

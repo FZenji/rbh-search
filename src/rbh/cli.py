@@ -237,12 +237,22 @@ def controls(
     noise_realisations: Annotated[
         int, typer.Option(help="How many pure-noise tiles to generate.")
     ] = 40,
+    exclude: Annotated[
+        list[str] | None,
+        typer.Option(
+            help="Tile stem to drop, repeatable. Use for fields containing known objects.",
+        ),
+    ] = None,
 ) -> None:
     """Measure what the pipeline finds when there is nothing to find.
 
     Runs four negative controls, each with fragment linking on and off, so the cost of
     linking is a paired comparison on identical pixels. This settles the debt ADR-0016 left
     open: it adopted linking while noting the false-positive cost had to be measured.
+
+    **Exclude any field containing a known object.** The grid layout of
+    ``fetch-destinations`` starts at the reference position, so its first tile is the RBH-1
+    discovery field - and counting RBH-1 itself as a false positive is exactly wrong.
     """
     import json
 
@@ -256,7 +266,12 @@ def controls(
     )
     from rbh.tileio import read_tile
 
-    real = [read_tile(p) for p in sorted(tiles_dir.glob("*.fits"))]
+    dropped = set(exclude or ())
+    paths = [p for p in sorted(tiles_dir.glob("*.fits")) if p.stem not in dropped]
+    skipped = sorted({p.stem for p in tiles_dir.glob("*.fits")} & dropped)
+    if skipped:
+        typer.echo(f"excluding {len(skipped)} tile(s) with known objects: {', '.join(skipped)}")
+    real = [read_tile(p) for p in paths]
     if not real:
         typer.echo(f"no tiles found in {tiles_dir}; run 'rbh fetch-destinations' first", err=True)
         raise typer.Exit(1)
