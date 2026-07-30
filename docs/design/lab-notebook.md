@@ -31,9 +31,9 @@ on, and a script in a temp directory satisfies nothing in
 
 ## 2026-07-30 — Phase 2: the long-feature collapse was my own harness
 
-The first length grid (below) showed completeness collapsing for long features — 8% at 16″
-and magnitude 23.8. Before writing that up as a detector property, three candidate causes
-were tested by relaxing each in turn:
+The first length grid showed completeness collapsing for long features — 8% at 16″ and
+magnitude 23.8, against the 63% the corrected grid gives. Before writing that up as a
+detector property, three candidate causes were tested by relaxing each in turn:
 
 | variant | 16″ @ 23.8 |
 |---|---|
@@ -73,53 +73,63 @@ Two lessons worth carrying:
 The 8.1″ results are unaffected (94% at radius 4 and 8 alike), so the headline
 completeness-versus-magnitude measurement stands.
 
+Corrected grid, against the buggy one, at magnitude 23.8:
+
+| length | buggy | corrected |
+|---|---|---|
+| 8.1″ | 98% | 98% |
+| 12″ | 63% | **84%** |
+| 16″ | 8% | **63%** |
+
 ---
 
 ## 2026-07-30 — Phase 2: completeness across feature length
 
-> **Superseded.** The table below was measured with the fixed 4″ truth-matching radius and
-> understates completeness for long features by up to a factor of 8. It is kept because the
-> correction above is only legible against it. The corrected grid replaces the numbers for
-> 12″ and 16″; rows at 8.1″ and shorter are unaffected.
-
-Extended the completeness grid along the length axis. Completeness (%) at fixed **total**
-magnitude, generator at calibrated parameters:
+Completeness (%) at fixed **total** magnitude, generator at calibrated parameters, measured
+with the corrected truth-matching radius:
 
 | length | 23.0 | 23.8 | 24.4 | 25.0 | mean SB at 25.0 |
 |---|---|---|---|---|---|
 | 2.5″ | 84 | 100 | 87 | 27 | 24.4 |
 | 4.0″ | 100 | 98 | 92 | 46 | 24.9 |
-| 6.0″ | 100 | 98 | 86 | 24 | 25.3 |
-| **8.1″** | 100 | 98 | 62 | 5 | 25.6 |
-| 12.0″ | 100 | 63 | 0 | 0 | 26.1 |
-| 16.0″ | 73 | 8 | 7 | 5 | 26.4 |
+| 6.0″ | 100 | 98 | 83 | 24 | 25.3 |
+| 8.1″ | 100 | 98 | 65 | 10 | 25.6 |
+| 12.0″ | 100 | 84 | 30 | 10 | 26.1 |
+| 16.0″ | 95 | 63 | 13 | 10 | 26.4 |
 
-Total magnitude is the misleading axis here: at fixed magnitude a longer feature is spread
-thinner, so the surface brightness falls by 2 mag from 2.5″ to 16″. Converting each row's 50%
-limit into mean surface brightness is the fairer comparison:
+Total magnitude is the misleading axis: at fixed magnitude a longer feature is spread thinner,
+so its surface brightness falls by 2 mag from 2.5″ to 16″. Converting each row's 50% limit to
+mean surface brightness is the fair comparison:
 
 | length | 50% limit (mag) | 50% limit (SB) | axis ratio |
 |---|---|---|---|
-| 2.5″ | 24.77 | 24.12 | 11.4 |
+| 2.5″ | 24.77 | **24.12** | 11.4 |
 | 4.0″ | 24.95 | 24.81 | 18.2 |
-| 6.0″ | 24.75 | 25.05 | 27.3 |
-| **8.1″** | **24.52** | **25.15** | 36.8 |
-| 12.0″ | 23.93 | 24.98 | 54.5 |
-| 16.0″ | 23.29 | 24.65 | 72.7 |
+| 6.0″ | 24.73 | 25.03 | 27.3 |
+| 8.1″ | 24.56 | 25.19 | 36.8 |
+| 12.0″ | 24.18 | 25.23 | 54.5 |
+| 16.0″ | 23.96 | **25.33** | 72.7 |
 
-**The surface-brightness reach peaks at 8.1″ — exactly RBH-1's own length.** Spread across
-the axis is 1.03 mag. That is worth staring at rather than reporting: the selection window
-was derived from RBH-1 ([ADR-0007](../adr/0007-target-selection-window.md)), so a sensitivity
-peak at RBH-1's length is at least partly the window admiring its own reflection. The short
-end is plainly the window — a 2.5″ feature sits just above the 2″ floor and its measured axis
-ratio scatters across the 8.0 threshold. The long end is under investigation; candidates are
-the 20″ tiling, the absolute straightness cut (0.35″ is ~7× stricter in relative terms at
-16″ than at 2.5″), and plain dimming.
+**Surface-brightness reach improves monotonically with length**, 24.12 → 25.33 over the range,
+a spread of 1.20 mag. That is what a matched filter should do: a longer feature integrates
+more signal along its length, so it can be found at lower surface brightness. The only
+departure is the short end, which is the selection window doing its job — a 2.5″ feature sits
+just above the 2″ floor and its measured axis ratio scatters across the 8.0 threshold.
 
-**Consequence for the science, if it holds.** Wake length grows with time since ejection, so
-being blind to long wakes means being biased toward *young* ones. Any space-density limit is
-really a limit on wakes shorter than about 10″, and that has to be said out loud rather than
-buried in a completeness table.
+**This reverses the interpretation drawn from the buggy grid**, which had the reach peaking at
+exactly RBH-1's own length and looked like the selection window admiring its own reflection.
+There is no such peak. Worth remembering how convincing the wrong version was: it had a
+plausible mechanism ready-made ([ADR-0007](../adr/0007-target-selection-window.md) was derived
+from RBH-1, so of course it would favour RBH-1) and it was wrong.
+
+**Consequence for the science.** At fixed *surface brightness* — which is what the shock
+physics sets, while length is set by time since ejection — completeness **improves** as a wake
+ages and lengthens. The earlier claim in this notebook that we are "biased toward young wakes"
+was an artefact of the bug and is withdrawn. Both statements below are true and it matters
+which is quoted:
+
+- at fixed total magnitude, longer features are *harder* (spread thinner);
+- at fixed surface brightness, longer features are *easier* (more signal integrated).
 
 ### Limits on this measurement
 

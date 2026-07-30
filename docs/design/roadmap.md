@@ -131,7 +131,11 @@ cross-filter assumption behaving as advertised.
 
 The completeness grid above is one slice, not a selection function. Still to do:
 
-- **Other lengths, inclinations and colours.** Everything above is at 8.1″ and one colour.
+- **Other inclinations and colours.** The length axis is now measured: surface-brightness
+  reach improves monotonically with length, 24.12 at 2.5″ to 25.33 at 16″, which is what a
+  matched filter should do. Only the short end is limited, by the selection window itself.
+  See the [lab notebook](lab-notebook.md) — including the harness bug that made the first
+  version of this grid say the opposite.
 - **A representative edge-on disc sample.** Started: `rbh.negatives` harvests them from real
   tiles by segmentation photometry, and the stage 6 features are measured against them for the
   first time (see the [ADR-0008 amendment](../adr/0008-scored-discriminants-not-cuts.md)). But
