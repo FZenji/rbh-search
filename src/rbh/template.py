@@ -22,6 +22,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 from scipy import ndimage
 
+from rbh.geometry import principal_axis, project
+
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -45,6 +47,9 @@ class SourceTemplate:
     noise_rms: dict[str, float]
     pixel_scale_arcsec: float
     source_pixels: int
+    #: Along-axis extent of the source, needed downstream to scale the truth-matching radius
+    #: when the template is injected.
+    length_arcsec: float = 0.0
 
     @property
     def shape(self) -> tuple[int, ...]:
@@ -113,6 +118,10 @@ def extract_template(
         stamps[band.filter_name] = np.where(footprint, cut, np.float32(0.0)).astype(np.float32)
         noise_rms[band.filter_name] = sigma
 
+    points = np.column_stack([detection.xs, detection.ys]).astype(np.float64)
+    axis, _ = principal_axis(points)
+    along = project(points, points.mean(axis=0), axis)
+
     return SourceTemplate(
         name=name,
         stamps=stamps,
@@ -120,6 +129,7 @@ def extract_template(
         noise_rms=noise_rms,
         pixel_scale_arcsec=tile.pixel_scale_arcsec,
         source_pixels=int(footprint.sum()),
+        length_arcsec=float(np.ptp(along)) * tile.pixel_scale_arcsec,
     )
 
 
@@ -162,4 +172,5 @@ def transform_template(
         noise_rms=dict(template.noise_rms),
         pixel_scale_arcsec=template.pixel_scale_arcsec,
         source_pixels=template.source_pixels,
+        length_arcsec=template.length_arcsec,
     )

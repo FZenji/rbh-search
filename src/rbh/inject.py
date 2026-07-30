@@ -135,7 +135,7 @@ def inject_template(
         centre_y=float(centre[0]),
         centre_x=float(centre[1]),
         flux_scale=flux_scale,
-        length_arcsec=float("nan"),
+        length_arcsec=template.length_arcsec,
         total_mag_ab=float("nan"),
         clumpiness=None,
         detail=f"template={template.name} compensate_noise={compensate_noise}",

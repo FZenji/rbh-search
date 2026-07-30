@@ -84,6 +84,23 @@ class Summary:
         return self.fragmented / self.detected if self.detected else 0.0
 
 
+#: Smallest truth-matching radius, used when the injected length is unknown.
+MIN_MATCH_RADIUS_ARCSEC = 4.0
+
+
+def match_radius_for(length_arcsec: float) -> float:
+    """Truth-matching radius appropriate to a feature of this length.
+
+    Half the length is the largest offset a fragment's centroid can have from the injection
+    centre, plus a margin for centroiding noise. Going much larger is not free either: an
+    over-wide radius starts matching unrelated detections, which showed up as completeness
+    *falling* from 94% to 88% when the radius was pushed to 15 arcsec on an 8 arcsec feature.
+    """
+    if not np.isfinite(length_arcsec) or length_arcsec <= 0:
+        return MIN_MATCH_RADIUS_ARCSEC
+    return max(MIN_MATCH_RADIUS_ARCSEC, 0.5 * length_arcsec + 2.0)
+
+
 def _passes(morphology: Morphology, window: SelectionWindow) -> bool:
     return bool(
         window.min_length_arcsec <= morphology.length_arcsec <= window.max_length_arcsec
@@ -100,7 +117,7 @@ def run_trial(
     *,
     window: SelectionWindow,
     rng: np.random.Generator,
-    match_radius_arcsec: float = 4.0,
+    match_radius_arcsec: float | None = None,
     low_snr: float = 3.0,
     high_snr: float = 5.0,
     min_pixels: int = 40,
@@ -108,10 +125,22 @@ def run_trial(
     """Inject one source, run detection, and report whether it came back.
 
     A detection counts as the injected source when its centroid falls within
-    ``match_radius_arcsec`` of the injection centre. Where several qualify, the largest
-    wins.
+    ``match_radius_arcsec`` of the injection centre. Where several qualify, the largest wins.
+
+    **The radius must scale with the injected length**, which is why the default is computed
+    rather than fixed. A feature recovered as a fragment has its centroid displaced toward
+    that fragment, by up to half the feature's length. With the fixed 4 arcsec radius used
+    initially, a 16 arcsec feature that fragmented was scored a miss despite being detected
+    perfectly well: measured completeness at magnitude 23.8 read 19%, against 69% once the
+    radius was large enough to reach the fragment. That was a defect in this harness being
+    reported as a property of the detector.
+
+    Passing an explicit value overrides the scaling, which is useful for testing but should
+    not be done in a measurement.
     """
     injected, record = injector(tile, centre, rng)
+    if match_radius_arcsec is None:
+        match_radius_arcsec = match_radius_for(record.length_arcsec)
     image, noise = injected.detection_image()
     exclude = bright_source_mask(image, noise)
     fragments = detect_ridges(

@@ -11,7 +11,13 @@ from numpy.random import Generator
 from conftest import SHAPE, make_tile
 from rbh.config import SelectionWindow
 from rbh.inject import Injection, inject_synthetic
-from rbh.recovery import Summary, run_trial, summarise
+from rbh.recovery import (
+    MIN_MATCH_RADIUS_ARCSEC,
+    Summary,
+    match_radius_for,
+    run_trial,
+    summarise,
+)
 from rbh.synthetic import WakeParameters
 from rbh.tile import Tile
 
@@ -129,6 +135,37 @@ def test_a_wake_injected_far_away_is_not_matched(noise_field: np.ndarray) -> Non
         match_radius_arcsec=2.0,
     )
     assert not trial.detected
+
+
+def test_match_radius_scales_with_injected_length() -> None:
+    """A fragment's centroid can sit half a feature-length from the injection centre.
+
+    Regression test for a real defect: with a fixed 4 arcsec radius, 16 arcsec features that
+    fragmented were scored as misses despite being detected, and completeness at magnitude
+    23.8 read 19% instead of 69%.
+    """
+    assert match_radius_for(4.0) == pytest.approx(MIN_MATCH_RADIUS_ARCSEC)
+    assert match_radius_for(16.0) == pytest.approx(10.0)
+    assert match_radius_for(16.0) > match_radius_for(8.0) > match_radius_for(2.0)
+
+
+def test_match_radius_falls_back_when_length_is_unknown() -> None:
+    assert match_radius_for(float("nan")) == pytest.approx(MIN_MATCH_RADIUS_ARCSEC)
+    assert match_radius_for(0.0) == pytest.approx(MIN_MATCH_RADIUS_ARCSEC)
+
+
+def test_a_long_feature_is_matched_without_an_explicit_radius(noise_field: np.ndarray) -> None:
+    """The default must be derived, not left at the old fixed value."""
+    params = WakeParameters(length_arcsec=10.0, width_arcsec=0.22, total_mag_ab=18.0)
+    trial = run_trial(
+        blank(noise_field),
+        injector(params),
+        (128, 128),
+        window=SelectionWindow(),
+        rng=np.random.default_rng(0),
+    )
+    assert trial.detected
+    assert trial.injection.length_arcsec == pytest.approx(10.0)
 
 
 def test_summary_arithmetic() -> None:

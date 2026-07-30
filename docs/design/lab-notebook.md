@@ -29,6 +29,113 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-07-30 — Phase 2: the long-feature collapse was my own harness
+
+The first length grid (below) showed completeness collapsing for long features — 8% at 16″
+and magnitude 23.8. Before writing that up as a detector property, three candidate causes
+were tested by relaxing each in turn:
+
+| variant | 16″ @ 23.8 |
+|---|---|
+| as configured | 8% |
+| straightness cut relaxed **10×** | 8% (no change at all) |
+| axis-ratio floor removed | 13% |
+
+Neither window cut was responsible, so the loss was upstream of the window. It turned out to
+be **the truth-matching radius in `run_trial`**, which was a fixed 4″. A feature recovered as
+a fragment has its centroid displaced toward that fragment by up to half the feature's
+length, so a fragmented 16″ feature lands 8″ from the injection centre and was scored a miss
+despite being detected perfectly:
+
+| match radius | 16″ detected | 16″ passes window |
+|---|---|---|
+| 4″ (as used) | 69% | **19%** |
+| 8″ | 100% | **69%** |
+| 15″ | 100% | 62% |
+
+So completeness for long features was understated by roughly a factor of 8. Fixed: the radius
+is now derived as `max(4, 0.5 × length + 2)` arcsec, with the injected length carried on the
+`Injection` record — which meant giving `SourceTemplate` a `length_arcsec` too, since
+transplants previously reported NaN.
+
+Note the radius has an optimum rather than a floor: at 15″ on an 8″ feature completeness
+*falls* from 94% to 88%, because an over-wide radius starts matching unrelated detections.
+
+Two lessons worth carrying:
+
+- **A completeness measurement can be limited by the measuring apparatus.** The number looked
+  like a statement about the detector and was a statement about my matching criterion. Any
+  parameter of the harness that is absolute where the thing it measures is scale-dependent is
+  a candidate for the same error.
+- **Chasing the mechanism paid.** Reporting "long features are lost" would have been true of
+  the numbers and false about the world, and would have gone into the selection function.
+
+The 8.1″ results are unaffected (94% at radius 4 and 8 alike), so the headline
+completeness-versus-magnitude measurement stands.
+
+---
+
+## 2026-07-30 — Phase 2: completeness across feature length
+
+> **Superseded.** The table below was measured with the fixed 4″ truth-matching radius and
+> understates completeness for long features by up to a factor of 8. It is kept because the
+> correction above is only legible against it. The corrected grid replaces the numbers for
+> 12″ and 16″; rows at 8.1″ and shorter are unaffected.
+
+Extended the completeness grid along the length axis. Completeness (%) at fixed **total**
+magnitude, generator at calibrated parameters:
+
+| length | 23.0 | 23.8 | 24.4 | 25.0 | mean SB at 25.0 |
+|---|---|---|---|---|---|
+| 2.5″ | 84 | 100 | 87 | 27 | 24.4 |
+| 4.0″ | 100 | 98 | 92 | 46 | 24.9 |
+| 6.0″ | 100 | 98 | 86 | 24 | 25.3 |
+| **8.1″** | 100 | 98 | 62 | 5 | 25.6 |
+| 12.0″ | 100 | 63 | 0 | 0 | 26.1 |
+| 16.0″ | 73 | 8 | 7 | 5 | 26.4 |
+
+Total magnitude is the misleading axis here: at fixed magnitude a longer feature is spread
+thinner, so the surface brightness falls by 2 mag from 2.5″ to 16″. Converting each row's 50%
+limit into mean surface brightness is the fairer comparison:
+
+| length | 50% limit (mag) | 50% limit (SB) | axis ratio |
+|---|---|---|---|
+| 2.5″ | 24.77 | 24.12 | 11.4 |
+| 4.0″ | 24.95 | 24.81 | 18.2 |
+| 6.0″ | 24.75 | 25.05 | 27.3 |
+| **8.1″** | **24.52** | **25.15** | 36.8 |
+| 12.0″ | 23.93 | 24.98 | 54.5 |
+| 16.0″ | 23.29 | 24.65 | 72.7 |
+
+**The surface-brightness reach peaks at 8.1″ — exactly RBH-1's own length.** Spread across
+the axis is 1.03 mag. That is worth staring at rather than reporting: the selection window
+was derived from RBH-1 ([ADR-0007](../adr/0007-target-selection-window.md)), so a sensitivity
+peak at RBH-1's length is at least partly the window admiring its own reflection. The short
+end is plainly the window — a 2.5″ feature sits just above the 2″ floor and its measured axis
+ratio scatters across the 8.0 threshold. The long end is under investigation; candidates are
+the 20″ tiling, the absolute straightness cut (0.35″ is ~7× stricter in relative terms at
+16″ than at 2.5″), and plain dimming.
+
+**Consequence for the science, if it holds.** Wake length grows with time since ejection, so
+being blind to long wakes means being biased toward *young* ones. Any space-density limit is
+really a limit on wakes shorter than about 10″, and that has to be said out loud rather than
+buried in a completeness table.
+
+### Limits on this measurement
+
+- **It cannot cover its own selection window.** Tiles are 20″; nothing beyond ~16″ fits.
+  ADR-0007 admits features to 25″. Cells that do not fit are emitted with a note rather than
+  omitted, because a missing row reads as "not measured" instead of "cannot be measured".
+  Phase 3 should use larger tiles.
+- **The 12″ and 16″ rows are compromised anyway.** A 16″ feature can only be centred within
+  ~4″ of the tile centre, so the three trials per tile sit on nearly the same background.
+- **Only the 8.1″ column is anchored.** The transplant cannot travel along this axis —
+  stretching real pixels resamples and smooths the knots, the exact bias ADR-0017 exists to
+  avoid — so every other length rests on the generator extrapolating from where it was
+  calibrated.
+
+---
+
 ## 2026-07-30 — Phase 2: the wake-versus-disc features
 
 Built the stage 6 feature vector ([ADR-0008](../adr/0008-scored-discriminants-not-cuts.md))
