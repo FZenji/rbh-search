@@ -143,7 +143,12 @@ The completeness grid above is one slice, not a selection function. Still to do:
   demands, so not yet representative. Needs Phase 3 area.
 - **Cross-visit artifact control**, which is the test the rotation control cannot be. Needs
   multi-visit coverage, so it is really Phase 3.
-- **Blind human discrimination** (step 6).
+- **Blind human discrimination** (step 6). The set is generated and awaiting a result:
+  `uv run rbh blind-test` produces 20 stamps, half transplanted real RBH-1 pixels and half
+  calibrated synthetics, matched in sky, brightness and display stretch, plus a separate
+  answer key. Near 50% accuracy is the outcome that validates the generator; well above 50%
+  means a human can see something the four calibration statistics missed. Result to be
+  recorded in the [lab notebook](lab-notebook.md) once taken.
 - **Crowded positions.** Injections currently avoid bright sources, so this is completeness
   for uncrowded sky and that restriction is part of the selection function.
 - **More sites.** 44 gives ±7.5% per point, and background realisations are reused across

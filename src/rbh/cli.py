@@ -384,6 +384,81 @@ def completeness_length(
     typer.echo(f"\nwrote {out}")
 
 
+@app.command("blind-test")
+def blind_test(
+    tiles_dir: Annotated[
+        Path, typer.Option(help="Directory of real sky tiles to inject into.")
+    ] = Path("data/controls"),
+    out_dir: Annotated[
+        Path, typer.Option(help="Where to write the stamps and the answer key.")
+    ] = Path("runs/blind-test"),
+    count: Annotated[int, typer.Option(help="Number of stamps; half of each class.")] = 20,
+    half_size: Annotated[int, typer.Option(help="Stamp half-width in pixels.")] = 110,
+    seed: Annotated[int, typer.Option(help="Seed for the set.")] = 31415,
+) -> None:
+    """Generate ADR-0017's blind test: real transplanted pixels versus calibrated synthetics.
+
+    Writes numbered PNGs plus a separate key file. Every stamp uses the **same** display
+    stretch, because per-stamp scaling would let contrast alone betray the class.
+
+    Near 50% accuracy is the outcome we want: it means the synthetics are indistinguishable
+    from real wakes, and the completeness measured with them can be trusted.
+    """
+    import json
+
+    import numpy as np
+    from matplotlib import image as mpimg
+
+    from rbh.blind import make_blind_set, shared_limits
+    from rbh.studies import reference_template
+    from rbh.tileio import read_tile
+
+    tiles = [
+        (p.stem, read_tile(p))
+        for p in sorted(tiles_dir.glob("*.fits"))
+        if p.stem != "dest_000"  # the RBH-1 field itself
+    ]
+    if not tiles:
+        typer.echo(f"no tiles in {tiles_dir}", err=True)
+        raise typer.Exit(1)
+
+    stamps = make_blind_set(
+        tiles,
+        reference_template(FIXTURE_PATH),
+        rng=np.random.default_rng(seed),
+        count=count,
+        stamp_half_size=half_size,
+    )
+    low, high = shared_limits(stamps)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for stamp in stamps:
+        mpimg.imsave(
+            out_dir / f"stamp_{stamp.index:02d}.png",
+            stamp.pixels,
+            cmap="gray",
+            vmin=low,
+            vmax=high,
+            origin="lower",
+        )
+
+    key = [
+        {
+            "index": s.index,
+            "kind": s.kind,
+            "tile": s.tile_name,
+            "magnitude": s.magnitude,
+        }
+        for s in stamps
+    ]
+    (out_dir / "key.json").write_text(json.dumps(key, indent=1), encoding="utf-8")
+    real = sum(1 for s in stamps if s.is_real)
+    typer.echo(
+        f"wrote {len(stamps)} stamps to {out_dir} "
+        f"({real} real, {len(stamps) - real} synthetic), stretch {low:.4f} to {high:.4f}"
+    )
+    typer.echo("answer key in key.json - do not read it before taking the test")
+
+
 @app.command("fetch-destinations")
 def fetch_destinations(
     count: Annotated[int, typer.Option(help="How many destination tiles to cache.")] = 12,
