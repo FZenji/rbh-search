@@ -62,6 +62,9 @@ class WakeParameters:
     #: Fractional variation of the transverse width along the feature. Real wakes are lumpy
     #: in width as well as brightness; a constant-width Gaussian ribbon reads as "extremely
     #: clean and linear", which is how the blind test was won.
+    #: Interpreted as a log-width scatter: 0.6 swings the width by a factor of about 1.8
+    #: either way along the feature. Fitted, not guessed - it was set by eye once and was
+    #: immediately the strongest remaining discriminator in the blind-test pre-flight.
     width_jitter: float = 0.45
     #: 0 = a smooth ribbon, 1 = flux entirely concentrated into discrete knots. The fit
     #: prefers zero, which is the floor and so cannot be widened downwards. Read it as
@@ -211,9 +214,15 @@ def render_wake(
     # "extremely clean and linear"; real wakes thicken and thin along their length.
     width_sigma = params.width_arcsec / _FWHM_PER_SIGMA
     if params.width_jitter > 0:
+        # Exponential, not (1 + jitter * wobble). A width is a positive quantity, so the
+        # natural symmetry is multiplicative: exp(+j) widens by exactly the factor exp(-j)
+        # narrows. The linear form had to be clipped from below to stop it reaching zero,
+        # and above jitter ~0.65 that clip bit on every negative excursion - the narrowing
+        # saturated while the widening kept growing, so raising the parameter quietly made
+        # the feature wider on average instead of more variable. The calibration then fitted
+        # jitter into exactly that regime, which is how the bias was found.
         wobble = _smooth_random_profile(along, half, rng)
-        local_sigma = width_sigma * (1.0 + params.width_jitter * wobble)
-        local_sigma = np.clip(local_sigma, 0.35 * width_sigma, None)
+        local_sigma = width_sigma * np.exp(params.width_jitter * wobble)
     else:
         local_sigma = np.full_like(along, width_sigma)
 

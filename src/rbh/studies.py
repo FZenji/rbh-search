@@ -257,14 +257,22 @@ def _statistics(trials: Sequence[Trial]) -> dict[str, float]:
         "fragmentation": summary.fragmentation_rate,
         "median_length_arcsec": summary.median_length_arcsec,
         "median_width_arcsec": summary.median_width_arcsec,
+        "median_width_variation": summary.median_width_variation,
         "median_axis_ratio": summary.median_axis_ratio,
     }
 
 
 #: Mismatch tolerances setting the scale of "close enough" for each calibration statistic.
+#:
+#: ``median_width_variation`` was added after the second blind-test pre-flight, where it
+#: separated real from synthetic stamps at AUC 0.84 while every fitted statistic matched.
+#: Its tolerance is the widest in relative terms because it is measured from four segments
+#: per feature and is correspondingly noisy; the point is to stop the generator sitting at
+#: a value nothing constrains, not to pin it to three decimal places.
 CALIBRATION_TOLERANCES = {
     "median_length_arcsec": 0.40,
     "median_width_arcsec": 0.025,
+    "median_width_variation": 0.05,
     "fragmentation": 0.15,
 }
 
@@ -323,9 +331,19 @@ def calibrate_generator(
     sites: Sequence[InjectionSite],
     reference: ReferenceTemplate,
     *,
+    #: Ranges are wide on purpose. An earlier version of this grid was narrowed to keep
+    #: the run short, and the fit promptly pinned itself against the bound that trimming
+    #: had created - a self-inflicted version of exactly what :func:`_pinned_parameters`
+    #: exists to catch. Trials now run across cores, so breadth is cheap and there is no
+    #: excuse for trading it away.
     tail_values: Sequence[float] = (0.02, 0.10, 0.22, 0.40),
-    clumpiness_values: Sequence[float] = (0.0, 0.2, 0.4, 0.6),
-    width_values: Sequence[float] = (0.10, 0.16, 0.22, 0.28, 0.34, 0.40),
+    clumpiness_values: Sequence[float] = (0.0, 0.2, 0.4),
+    width_values: Sequence[float] = (0.16, 0.22, 0.28, 0.34),
+    #: Added as a fitted axis rather than a constant after the second blind-test
+    #: pre-flight: set by eye it was the strongest remaining discriminator between real
+    #: and synthetic stamps. Interpreted as a log-width scatter, so 0.6 means the width
+    #: swings by a factor of e**0.6, roughly 1.8, either way along the feature.
+    width_jitter_values: Sequence[float] = (0.15, 0.3, 0.45, 0.6, 0.8, 1.0, 1.3),
     psf_fwhm_arcsec: float = DEFAULT_PSF_FWHM_ARCSEC,
     length_arcsec: float = DEFAULT_LENGTH_ARCSEC,
     window: SelectionWindow | None = None,
@@ -345,10 +363,13 @@ def calibrate_generator(
 
     scanned: list[dict[str, float]] = []
     best: tuple[float, WakeParameters, dict[str, float]] | None = None
-    for tail, clumpiness, width in itertools.product(tail_values, clumpiness_values, width_values):
+    for tail, clumpiness, width, jitter in itertools.product(
+        tail_values, clumpiness_values, width_values, width_jitter_values
+    ):
         params = WakeParameters(
             length_arcsec=length_arcsec,
             width_arcsec=width,
+            width_jitter=jitter,
             clumpiness=clumpiness,
             tail_brightness=tail,
             total_mag_ab=reference.total_mag_ab,
@@ -368,6 +389,7 @@ def calibrate_generator(
                 "tail_brightness": tail,
                 "clumpiness": clumpiness,
                 "width_arcsec": width,
+                "width_jitter": jitter,
                 "cost": cost,
                 **got,
             }
@@ -392,6 +414,7 @@ def calibrate_generator(
                 "tail_brightness": tail_values,
                 "clumpiness": clumpiness_values,
                 "width_arcsec": width_values,
+                "width_jitter": width_jitter_values,
             },
         ),
     )

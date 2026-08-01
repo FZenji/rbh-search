@@ -247,6 +247,47 @@ now exempts such a floor while still flagging the top of the same parameter.
 of the blind test. Neither the recalibration nor the pinning check tells us whether the
 synthetics now *look* right; only a person can, which is the whole argument of this ADR.
 
+## Amendment, 2026-08-01 (the pre-flight, and making the same mistake twice)
+
+Round 2 was generated and **not handed over**. Three statistics targeting the round 1 tells
+were measured on the stamps and scored by rank-sum AUC against the key:
+
+| statistic | real | synthetic | AUC |
+|---|---|---|---|
+| head contrast | 9.5 ± 6.6 | 11.8 ± 18.1 | 0.59 — fixed |
+| flux variation | 1.15 ± 0.27 | 1.08 ± 0.36 | 0.62 — fine |
+| **width variation** | **0.19 ± 0.03** | **0.14 ± 0.04** | **0.84 — separates** |
+
+The shooting-star head was gone; the width irregularity was not. **`width_jitter` had been
+set to 0.45 by eye, and no statistic constrained it** — the terminal-knot failure repeated
+within an hour of the lesson being written into this ADR. Fixing a guessed parameter by
+guessing a better value is not a fix.
+
+**The rule this establishes.** Any property a person could use to tell the classes apart has
+to be a *measured* statistic in the calibration objective. Adding a parameter to the
+generator without adding the statistic that constrains it recreates the failure every time.
+`Morphology.width_variation` now measures the coefficient of variation of the width along a
+feature, it is a calibration term, and `width_jitter` is fitted rather than assumed.
+
+**Two further defects surfaced by doing that.** The jitter axis pinned at the top of its
+grid, which turned out to be a genuine bias rather than a missing grid point: the width was
+`width_sigma * (1 + jitter * wobble)` clipped from below to keep it positive, and above
+jitter ≈ 0.65 that clip bit on every negative excursion, so the narrowing saturated while the
+widening kept growing. Turning the parameter up quietly made features *wider on average*
+instead of more variable, and the fit had walked straight into that regime. Width is a
+positive quantity, so the scatter is now multiplicative — `width_sigma * exp(jitter *
+wobble)`, where `exp(+j)` widens by exactly the factor `exp(-j)` narrows, with no clip.
+Separately, `tail_brightness` pinned against a bound created by trimming the grid to keep a
+run short — a self-inflicted instance of the very thing the pinning check exists to catch,
+and one with no excuse now that trials run across cores.
+
+**The pre-flight is now part of `rbh blind-test` and runs automatically.** It does not
+replace the human test and cannot: a machine misses what a person sees at a glance, which is
+how round 1 happened. Its value is the converse. If one number separates the classes, the set
+has a tell and there is no point spending a person's attention on it. It runs automatically
+rather than on request because the one time it was left to be remembered, a set with an AUC
+of 0.84 came within a message of being handed over.
+
 ## Consequences
 
 - Phase 2 gains a transplant machinery step before the parametric generator, so the

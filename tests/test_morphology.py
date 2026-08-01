@@ -112,3 +112,61 @@ def test_endpoints_bracket_the_centroid() -> None:
     assert m.endpoint_a_ra_deg != m.endpoint_b_ra_deg
     assert min(m.endpoint_a_dec_deg, m.endpoint_b_dec_deg) <= m.centroid_dec_deg
     assert m.centroid_dec_deg <= max(m.endpoint_a_dec_deg, m.endpoint_b_dec_deg)
+
+
+def draw_tapered_line(
+    shape: tuple[int, int],
+    *,
+    length_pixels: float,
+    width_start: float,
+    width_end: float,
+    amplitude: float,
+) -> np.ndarray:
+    """A horizontal line whose width ramps linearly from one end to the other."""
+    ys, xs = np.mgrid[0 : shape[0], 0 : shape[1]].astype(np.float64)
+    cy, cx = shape[0] / 2, shape[1] / 2
+    along, across = xs - cx, ys - cy
+
+    fraction = np.clip((along + length_pixels / 2) / length_pixels, 0.0, 1.0)
+    width = width_start + fraction * (width_end - width_start)
+    sigma = width / 2.3548200450309493
+    inside = np.abs(along) <= length_pixels / 2
+    return np.asarray(amplitude * np.exp(-0.5 * (across / sigma) ** 2) * inside, dtype=np.float32)
+
+
+def test_constant_width_line_has_near_zero_width_variation() -> None:
+    """The control: a uniform ribbon must not manufacture variation out of nothing."""
+    image = draw_line(SHAPE, length_pixels=160.0, width_pixels=4.0, angle_deg=0.0, amplitude=10.0)
+    morphology = measure(detection_from(image, 0.5), image, make_wcs(), PIXEL_SCALE)
+    assert morphology.width_variation == pytest.approx(0.0, abs=0.05)
+
+
+def test_tapered_line_reports_width_variation() -> None:
+    """A feature that doubles in width along its length must report it.
+
+    This is the statistic that separated real from synthetic stamps at AUC 0.84 while
+    every other fitted quantity matched, so it needs to respond to the thing it claims to
+    measure rather than merely existing.
+    """
+    image = draw_tapered_line(
+        SHAPE, length_pixels=160.0, width_start=3.0, width_end=6.0, amplitude=10.0
+    )
+    morphology = measure(detection_from(image, 0.5), image, make_wcs(), PIXEL_SCALE)
+    assert morphology.width_variation > 0.15
+
+
+def test_width_variation_is_independent_of_absolute_width() -> None:
+    """A coefficient of variation, not a spread: scaling the whole feature changes nothing.
+
+    Without this the statistic would double-count width, which the calibration already
+    constrains separately, and the fit would trade one against the other.
+    """
+    narrow = draw_tapered_line(
+        SHAPE, length_pixels=160.0, width_start=3.0, width_end=6.0, amplitude=10.0
+    )
+    wide = draw_tapered_line(
+        SHAPE, length_pixels=160.0, width_start=6.0, width_end=12.0, amplitude=10.0
+    )
+    a = measure(detection_from(narrow, 0.5), narrow, make_wcs(), PIXEL_SCALE)
+    b = measure(detection_from(wide, 0.5), wide, make_wcs(), PIXEL_SCALE)
+    assert a.width_variation == pytest.approx(b.width_variation, abs=0.06)

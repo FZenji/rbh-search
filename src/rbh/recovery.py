@@ -63,6 +63,7 @@ class Summary:
     fragmented: int
     median_length_arcsec: float
     median_width_arcsec: float
+    median_width_variation: float
     median_axis_ratio: float
     label: str = ""
 
@@ -196,6 +197,12 @@ def _matches(
     return bool(truth.separation(centroid).arcsec <= radius_arcsec)
 
 
+def _nanmedian(values: Sequence[float]) -> float:
+    """Median ignoring NaNs, returning NaN when nothing is measurable."""
+    finite = [v for v in values if np.isfinite(v)]
+    return float(np.median(finite)) if finite else float("nan")
+
+
 def summarise(trials: Sequence[Trial], label: str = "") -> Summary:
     """Aggregate a set of trials run at the same parameters."""
     measured = [t.measured for t in trials if t.measured is not None]
@@ -210,6 +217,9 @@ def summarise(trials: Sequence[Trial], label: str = "") -> Summary:
         median_width_arcsec=float(np.median([m.width_arcsec for m in measured]))
         if measured
         else float("nan"),
+        # nanmedian, not median: a trial too faint for three measurable segments reports
+        # NaN, and one such trial would otherwise poison the whole summary.
+        median_width_variation=_nanmedian([m.width_variation for m in measured]),
         median_axis_ratio=float(np.median([m.axis_ratio for m in measured]))
         if measured
         else float("nan"),

@@ -25,7 +25,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
+from scipy import ndimage
 
+from rbh.geometry import principal_axis
 from rbh.inject import free_positions, inject_synthetic, inject_template
 from rbh.synthetic import WakeParameters
 from rbh.template import transform_template
@@ -192,3 +194,121 @@ def score(stamps: Sequence[BlindStamp], answers: Sequence[str]) -> dict[str, flo
         "standard_error": standard_error,
         "sigma_above_chance": (accuracy - 0.5) / standard_error if standard_error > 0 else 0.0,
     }
+
+
+#: Statistics the pre-flight scores the two classes on. Each one exists because it was a
+#: reported or measured tell, not because it seemed like a good idea: the head contrast
+#: and flux variation come from the round 1 debrief ("a large head at the start", "an
+#: extremely clean and linear trail"), and the width variation from the round 2
+#: pre-flight, where it separated the classes at AUC 0.84 while every fitted statistic
+#: matched.
+PREFLIGHT_STATISTICS = ("head_contrast", "width_variation", "flux_variation")
+
+#: How far from 0.5 an AUC must sit before the set is called separable. At 20 stamps the
+#: standard error on an AUC under the null is about 0.13, so 0.28 is roughly two of them:
+#: loose enough not to cry wolf on noise, tight enough to catch a cue a person could use.
+PREFLIGHT_AUC_MARGIN = 0.28
+
+
+def stamp_statistics(pixels: NDArray[np.float32], n_segments: int = 12) -> dict[str, float]:
+    """Measure the tell statistics on one stamp.
+
+    Works on the stamp's own pixels rather than the rendered PNG, so display stretch and
+    8-bit quantisation cannot influence the answer. The feature is located by taking the
+    brightest pixels near the stamp centre - where the injection is by construction - and
+    fitting their principal axis, rather than by rerunning the detector, which would drag
+    the whole cascade into what should be a cheap check.
+    """
+    smooth = ndimage.gaussian_filter(np.asarray(pixels, dtype=np.float64), 1.5)
+    half = np.array(smooth.shape) / 2.0
+    ys, xs = np.mgrid[: smooth.shape[0], : smooth.shape[1]]
+    core = (smooth > np.percentile(smooth, 99.0)) & (
+        np.hypot(ys - half[0], xs - half[1]) < 0.42 * smooth.shape[0]
+    )
+    nan = dict.fromkeys(PREFLIGHT_STATISTICS, float("nan"))
+    if core.sum() < 20:
+        return nan
+
+    points = np.column_stack([xs[core], ys[core]]).astype(np.float64)
+    centre = points.mean(axis=0)
+    major, minor = principal_axis(points)
+
+    offset = np.column_stack([xs.ravel() - centre[0], ys.ravel() - centre[1]])
+    along, across = offset @ major, offset @ minor
+    weight = np.clip(smooth.ravel() - np.median(smooth), 0.0, None)
+
+    band = np.abs(across) < 6.0
+    if band.sum() < n_segments * 4:
+        return nan
+    edges = np.linspace(along[band].min(), along[band].max(), n_segments + 1)
+    which = np.digitize(along[band], edges) - 1
+
+    flux, width = [], []
+    for segment in range(n_segments):
+        selected = band.copy()
+        selected[band] = which == segment
+        w = weight[selected]
+        if w.sum() <= 0:
+            continue
+        a = across[selected]
+        flux.append(float(w.sum()))
+        width.append(float(np.sqrt(np.average((a - np.average(a, weights=w)) ** 2, weights=w))))
+
+    if len(flux) < 4:
+        return nan
+    flux_values, width_values = np.array(flux), np.array(width)
+    return {
+        # "A large head at the start of the wake": brightest segment against the typical one.
+        "head_contrast": float(flux_values.max() / max(np.median(flux_values), 1e-9)),
+        # "Much more irregular, a bit blobby" against a constant-width ribbon.
+        "width_variation": float(width_values.std() / max(width_values.mean(), 1e-9)),
+        "flux_variation": float(flux_values.std() / max(flux_values.mean(), 1e-9)),
+    }
+
+
+def _auc(values: NDArray[np.float64], is_real: NDArray[np.bool_]) -> float:
+    """Probability that a random real stamp outranks a random synthetic one.
+
+    Rank-sum rather than a mean difference, so it is unaffected by the scale of the
+    statistic and by outliers, and reads directly as "how often could someone using this
+    one cue alone get it right".
+    """
+    order = np.argsort(values)
+    ranks = np.empty(values.size, dtype=float)
+    ranks[order] = np.arange(1, values.size + 1)
+    n_real, n_synthetic = int(is_real.sum()), int((~is_real).sum())
+    if n_real == 0 or n_synthetic == 0:
+        return float("nan")
+    return float((ranks[is_real].sum() - n_real * (n_real + 1) / 2) / (n_real * n_synthetic))
+
+
+def preflight(stamps: Sequence[BlindStamp]) -> dict[str, float]:
+    """Score how separable the two classes are, before spending a person's attention.
+
+    This does **not** replace the human test and cannot. A machine misses what a person
+    sees at a glance - which is exactly what happened in round 1, where four fitted
+    statistics all matched and the classes were still obvious. The converse is what makes
+    it worth running: if a single number separates the classes, the set has a tell and
+    there is no point running the human test yet.
+
+    Returns one AUC per statistic. 0.5 means indistinguishable on that cue; distance from
+    0.5 in either direction is separation, since a person only needs the cue to be
+    informative, not to point in any particular direction.
+    """
+    rows = [stamp_statistics(stamp.pixels) for stamp in stamps]
+    is_real = np.array([stamp.is_real for stamp in stamps])
+    result = {}
+    for name in PREFLIGHT_STATISTICS:
+        values = np.array([row[name] for row in rows])
+        usable = np.isfinite(values)
+        result[name] = _auc(values[usable], is_real[usable]) if usable.sum() >= 4 else float("nan")
+    return result
+
+
+def separating_statistics(auc: dict[str, float]) -> tuple[str, ...]:
+    """Names of the statistics that separate the classes by more than the noise floor."""
+    return tuple(
+        name
+        for name, value in auc.items()
+        if np.isfinite(value) and abs(value - 0.5) > PREFLIGHT_AUC_MARGIN
+    )

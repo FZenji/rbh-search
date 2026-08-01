@@ -12,6 +12,7 @@ meaningless.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -36,6 +37,10 @@ class Morphology:
 
     length_arcsec: float
     width_arcsec: float
+    #: Coefficient of variation of the width along the feature, or NaN when too few
+    #: segments are measurable. Calibrated against, not merely reported - see
+    #: :func:`_measure_width_variation`.
+    width_variation: float
     axis_ratio: float
     position_angle_deg: float
     straightness_arcsec: float
@@ -92,6 +97,9 @@ def measure(
     width_arcsec = _measure_width(
         detection, image, centre, major, minor, pixel_scale_arcsec, width_half_extent_pixels
     )
+    width_variation = _measure_width_variation(
+        detection, image, centre, major, minor, width_half_extent_pixels
+    )
     straightness_arcsec = _measure_straightness(
         points, centre, major, minor, pixel_scale_arcsec, straightness_bins
     )
@@ -106,6 +114,7 @@ def measure(
     return Morphology(
         length_arcsec=length_arcsec,
         width_arcsec=width_arcsec,
+        width_variation=width_variation,
         axis_ratio=length_arcsec / width_arcsec if width_arcsec > 0 else float("inf"),
         position_angle_deg=position_angle,
         straightness_arcsec=straightness_arcsec,
@@ -147,6 +156,36 @@ def _measure_width(
     broader effective drizzled PSF or a genuinely wider feature cannot be separated from
     this cutout, which contains no stars to measure a PSF from. See ADR-0017.
     """
+    along, across, flux, detection_along = _transverse_frame(
+        detection, image, centre, major, minor, half_extent_pixels
+    )
+    inside = (
+        (along >= detection_along.min())
+        & (along <= detection_along.max())
+        & (np.abs(across) <= half_extent_pixels)
+    )
+    if inside.sum() < 10:
+        return float(np.abs(across[inside]).std() * _FWHM_PER_SIGMA * pixel_scale_arcsec)
+
+    fwhm = _profile_fwhm_pixels(across[inside], flux[inside], half_extent_pixels)
+    if math.isnan(fwhm):
+        return float(np.abs(across[inside]).std() * _FWHM_PER_SIGMA * pixel_scale_arcsec)
+    return fwhm * pixel_scale_arcsec
+
+
+def _transverse_frame(
+    detection: RidgeDetection,
+    image: NDArray[np.float32],
+    centre: NDArray[np.float64],
+    major: NDArray[np.float64],
+    minor: NDArray[np.float64],
+    half_extent_pixels: int,
+) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+    """Return along-axis and transverse coordinates, and flux, around one detection.
+
+    Shared by the width and the width-variation measurements so that the two cannot drift
+    apart in how they define the feature's frame.
+    """
     ys_det, xs_det = detection.ys, detection.xs
     pad = half_extent_pixels + 2
     y0 = max(int(ys_det.min()) - pad, 0)
@@ -156,25 +195,27 @@ def _measure_width(
 
     gy, gx = np.mgrid[y0:y1, x0:x1].astype(np.float64)
     points = np.column_stack([gx.ravel(), gy.ravel()])
-    along = (points - centre) @ major
-    across = (points - centre) @ minor
     flux = image[y0:y1, x0:x1].astype(np.float64).ravel()
-
     detection_along = (np.column_stack([xs_det, ys_det]).astype(np.float64) - centre) @ major
-    inside = (
-        (along >= detection_along.min())
-        & (along <= detection_along.max())
-        & (np.abs(across) <= half_extent_pixels)
-    )
-    if inside.sum() < 10:
-        return float(np.abs(across[inside]).std() * _FWHM_PER_SIGMA * pixel_scale_arcsec)
+    return (points - centre) @ major, (points - centre) @ minor, flux, detection_along
 
+
+def _profile_fwhm_pixels(
+    across: NDArray[np.float64], flux: NDArray[np.float64], half_extent_pixels: int
+) -> float:
+    """FWHM in pixels of the transverse profile of the pixels handed in, or NaN.
+
+    NaN rather than a fallback, because callers differ in what they should do when a
+    segment is too faint to measure: the whole-feature width has a second-moment estimate
+    to fall back on, while a single segment of the variation measurement should simply be
+    dropped.
+    """
     edges = np.arange(-half_extent_pixels, half_extent_pixels + 1.0)
-    sums, _ = np.histogram(across[inside], bins=edges, weights=flux[inside])
-    counts, _ = np.histogram(across[inside], bins=edges)
+    sums, _ = np.histogram(across, bins=edges, weights=flux)
+    counts, _ = np.histogram(across, bins=edges)
     valid = counts > 0
     if valid.sum() < 5:
-        return float(np.abs(across[inside]).std() * _FWHM_PER_SIGMA * pixel_scale_arcsec)
+        return float("nan")
 
     profile = np.zeros(sums.shape)
     profile[valid] = sums[valid] / counts[valid]
@@ -186,8 +227,52 @@ def _measure_width(
 
     peak = float(profile.max())
     if peak <= 0:
-        return 0.0
-    return _fwhm_from_profile(offsets, profile, peak) * pixel_scale_arcsec
+        return float("nan")
+    return _fwhm_from_profile(offsets, profile, peak)
+
+
+def _measure_width_variation(
+    detection: RidgeDetection,
+    image: NDArray[np.float32],
+    centre: NDArray[np.float64],
+    major: NDArray[np.float64],
+    minor: NDArray[np.float64],
+    half_extent_pixels: int = 14,
+    n_segments: int = 4,
+) -> float:
+    """How much the transverse width changes along the feature, as a coefficient of variation.
+
+    A real wake is lumpy in width as well as in brightness; a constant-width ribbon reads
+    as "extremely clean and linear", which is how the first blind test was won. That made
+    this a property the synthetics have to match, and therefore one the calibration has to
+    measure -- setting the generator's ``width_jitter`` by eye instead is the same mistake
+    as the terminal knot, where a parameter no statistic constrained sat at a guessed
+    value and turned out to be the loudest signal in the image.
+
+    Few segments on purpose. Each one measures a width from a quarter of the length, so it
+    has a quarter of the signal to beat the background down with; slicing finer measures
+    noise. Segments too faint to yield a half-maximum crossing are dropped, and fewer than
+    three surviving segments returns NaN rather than a number built from two points.
+    """
+    along, across, flux, detection_along = _transverse_frame(
+        detection, image, centre, major, minor, half_extent_pixels
+    )
+    band = np.abs(across) <= half_extent_pixels
+    edges = np.linspace(detection_along.min(), detection_along.max(), n_segments + 1)
+
+    widths = []
+    for i in range(n_segments):
+        segment = band & (along >= edges[i]) & (along <= edges[i + 1])
+        if segment.sum() < 10:
+            continue
+        fwhm = _profile_fwhm_pixels(across[segment], flux[segment], half_extent_pixels)
+        if not math.isnan(fwhm) and fwhm > 0:
+            widths.append(fwhm)
+
+    if len(widths) < 3:
+        return float("nan")
+    values = np.array(widths)
+    return float(values.std() / values.mean())
 
 
 def _fwhm_from_profile(

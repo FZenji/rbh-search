@@ -29,6 +29,115 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-01 — The refit costs 0.41 mag, and I repeated the terminal-knot mistake
+
+Two findings from the first measurements after the refit, both of which say the generator
+is not finished.
+
+### The generator is now 0.41 mag *pessimistic*
+
+| | 50% completeness limit |
+|---|---|
+| transplant (real pixels) | **24.58** |
+| parametric, c = 0.0 / 0.3 / 0.6 | 24.17 |
+| parametric, c = 0.9 | 24.24 |
+
+The transplant is unchanged within noise, as it must be — it is the same real pixels. The
+generator has moved from **0.14 mag optimistic to 0.41 mag pessimistic**: synthetics are now
+*harder* to detect than the real object. Wider features at fixed total flux have lower
+surface brightness, and `width_arcsec` went 0.22 → 0.28.
+
+**Why the calibration did not catch it.** The three fitted statistics are measured at RBH-1's
+own brightness, 23.77, where completeness is saturated at 100% for every configuration. The
+objective therefore constrains morphology in a regime where the deliverable is constant, and
+says nothing about the faint end where the deliverable actually varies. This is the same
+structural failure as the terminal knot, in a third guise: not a parameter no statistic
+constrains, nor one the search cannot reach, but **an objective evaluated where the answer
+cannot move**.
+
+Note which way this cuts. A pessimistic generator makes the published limits conservative
+rather than overstated, so it is the safer of the two errors — but "safe" is not "measured",
+and the transplant remains the number to quote.
+
+### A reporting bug that would have hidden it
+
+The CLI printed one line, `spread across clumpiness`, computed over **every** source
+including the transplant. It conflated two different questions: how much the assumed
+clumpiness matters, and whether the generator agrees with real pixels at all. With the old
+numbers both were small and the label passed unnoticed. With these numbers it would have
+reported a 0.07 mag clumpiness spread and a 0.41 mag model-versus-real disagreement as a
+single "0.41 mag across clumpiness" — reading as *clumpiness matters a lot*, the precise
+opposite of the truth. Now reported separately, with the gap highlighted when it exceeds
+0.25 mag.
+
+The earlier headline, "varies by only 0.14 mag across the full clumpiness range", was
+therefore mislabelled too. It was conservative — the true clumpiness-only spread was smaller
+— so the conclusion drawn from it stands, but the attribution was wrong.
+
+### The blind-test pre-flight, and the same mistake again
+
+Before spending a person's attention on round 2, three statistics targeting the round 1 tells
+were measured on the stamps and scored by rank-sum AUC against the answer key (0.5 = no
+separation):
+
+| statistic | real | synthetic | AUC |
+|---|---|---|---|
+| head contrast | 9.5 ± 6.6 | 11.8 ± 18.1 | 0.59 — fixed |
+| flux variation | 1.15 ± 0.27 | 1.08 ± 0.36 | 0.62 — fine |
+| **width variation** | **0.19 ± 0.03** | **0.14 ± 0.04** | **0.84 — separates** |
+
+The "shooting star" head is gone. But real wakes vary in width along their length more than
+the generator does, strongly enough that a person could beat chance on that cue alone.
+
+**`width_jitter = 0.45` was set by guesswork and no statistic constrains it** — exactly the
+terminal-knot failure, repeated within an hour of the lesson being written down. Fixing a
+guessed parameter by guessing a better value is not a fix. The generator's width variation
+has to enter the calibration objective so the fit is forced to match it.
+
+**The rule, stated so it stops recurring:** *any property a person could use to tell the
+classes apart must be a measured statistic in the calibration objective.* Adding a parameter
+to the generator without adding the statistic that constrains it recreates this failure every
+single time. `Morphology.width_variation` is now measured, is a calibration term, and
+`width_jitter` is fitted.
+
+### Making the parameter fitted exposed two more defects
+
+**The jitter axis pinned at the top of its grid, and that was a real bias.** The width was
+`width_sigma * (1 + jitter * wobble)`, clipped from below at `0.35 * width_sigma` to keep it
+positive. Above jitter ≈ 0.65 that clip bites on *every* negative excursion: the narrowing
+saturates while the widening keeps growing, so **turning the parameter up quietly made
+features wider on average rather than more variable** — and the fit had chosen 0.8, squarely
+inside that regime. A width is a positive quantity, so its natural scatter is multiplicative:
+now `width_sigma * exp(jitter * wobble)`, where `exp(+j)` widens by exactly the factor
+`exp(-j)` narrows. No clip, no bias, and `width_jitter` reads as a log-width scatter — 0.6
+means the width swings by a factor of about 1.8 either way.
+
+**`tail_brightness` pinned against a bound I had created myself.** Adding the jitter axis
+quadrupled the grid, so the tail range was trimmed from four values to three to keep the run
+short — and the fit immediately strained against the new bottom. A self-inflicted instance of
+exactly what the pinning check exists to catch. The excuse for it evaporated the moment
+trials went parallel: breadth is cheap now, and the grids are wide again.
+
+Successive costs as each of these was fixed: **1.84 → 1.68 → 1.53**.
+
+### The pre-flight is now automatic
+
+`rbh blind-test` runs it every time and prints the AUCs, rather than leaving it to be
+remembered. The one time it *was* left to be remembered, a set at AUC 0.84 came within a
+message of being handed to a person. The margin is 0.28 from 0.5 — about two standard errors
+at 20 stamps, loose enough not to fire on noise and tight enough to catch a usable cue.
+
+Both halves are tested: it must catch a planted width tell, and it must stay silent when both
+classes are drawn identically. A check that never fires is decoration; one that always fires
+teaches its reader to skip it, which is how the pinning warning's first version failed.
+
+This is also the pre-flight's argument for existing: it is not a substitute for the human
+test — a machine misses what a person sees, which is how round 1 happened — but the converse
+is cheap. If a one-number summary separates the classes, the set has a tell and there is no
+point running the human test yet.
+
+---
+
 ## 2026-08-01 — Recalibration after the blind test, and a 9× faster measurement loop
 
 ### The generator, refitted

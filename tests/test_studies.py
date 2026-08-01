@@ -87,6 +87,7 @@ def test_calibration_returns_the_lowest_cost_configuration(
         tail_values=(0.02, 0.40),
         clumpiness_values=(0.0,),
         width_values=(0.10, 0.22),
+        width_jitter_values=(0.45,),
     )
     assert len(result.scanned) == 4
     assert result.scanned == sorted(result.scanned, key=lambda row: row["cost"])

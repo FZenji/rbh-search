@@ -153,7 +153,8 @@ def calibrate(
     typer.echo(f"best fit         : {_fmt(result.best_statistics)}  cost={result.best_cost:.2f}")
     typer.echo(
         f"  tail_brightness={result.best.tail_brightness} "
-        f"clumpiness={result.best.clumpiness} width_arcsec={result.best.width_arcsec}"
+        f"clumpiness={result.best.clumpiness} width_arcsec={result.best.width_arcsec} "
+        f"width_jitter={result.best.width_jitter}"
     )
     if result.is_pinned:
         typer.secho(
@@ -216,9 +217,22 @@ def completeness(
         comp = [float(r["completeness"]) for r in selected]
         limits[source] = half_completeness_limit(mags, comp)
         typer.echo(f"  {source:<20} {limits[source]:.2f}")
-    finite = [v for v in limits.values() if not math.isnan(v)]
-    if finite:
-        typer.echo(f"  spread across clumpiness: {max(finite) - min(finite):.2f} mag")
+    # Two different quantities, previously conflated into one line that took the spread
+    # over every source including the transplant and labelled it "across clumpiness".
+    # They answer different questions: how much does the assumed clumpiness matter, and
+    # does the generator agree with real pixels at all. Reporting them together hid a
+    # 0.41 mag model-versus-real disagreement behind a 0.07 mag robustness claim.
+    parametric = [v for k, v in limits.items() if k != "transplant" and not math.isnan(v)]
+    if parametric:
+        typer.echo(f"  spread across clumpiness: {max(parametric) - min(parametric):.2f} mag")
+    transplant_limit = float(limits.get("transplant", math.nan))
+    if parametric and not math.isnan(transplant_limit):
+        gaps = [v - transplant_limit for v in parametric]
+        worst = max(gaps, key=abs)
+        typer.secho(
+            f"  generator vs transplant : {worst:+.2f} mag (worst case)",
+            fg=typer.colors.YELLOW if abs(worst) > 0.25 else None,
+        )
 
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
@@ -437,7 +451,7 @@ def blind_test(
     import numpy as np
     from matplotlib import image as mpimg
 
-    from rbh.blind import make_blind_set, shared_limits
+    from rbh.blind import make_blind_set, preflight, separating_statistics, shared_limits
     from rbh.studies import reference_template
     from rbh.tileio import read_tile
 
@@ -485,6 +499,22 @@ def blind_test(
         f"({real} real, {len(stamps) - real} synthetic), stretch {low:.4f} to {high:.4f}"
     )
     typer.echo("answer key in key.json - do not read it before taking the test")
+
+    # Run automatically rather than on request. It is cheap, and the one time it was left
+    # to be remembered, a set with an AUC of 0.84 was very nearly handed to a person.
+    auc = preflight(stamps)
+    typer.echo("\npre-flight (0.50 = classes indistinguishable on that cue):")
+    for name, value in auc.items():
+        typer.echo(f"  {name:<18}{value:.2f}")
+    separating = separating_statistics(auc)
+    if separating:
+        typer.secho(
+            f"  {', '.join(separating)} separates the classes. The set has a tell: fix the"
+            " generator before spending anyone's attention on it.",
+            fg=typer.colors.YELLOW,
+        )
+    else:
+        typer.secho("  nothing separates the classes - the set is worth taking.", fg="green")
 
 
 @app.command("fetch-destinations")
