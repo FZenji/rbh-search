@@ -143,16 +143,20 @@ The completeness grid above is one slice, not a selection function. Still to do:
   demands, so not yet representative. Needs Phase 3 area.
 - **Cross-visit artifact control**, which is the test the rotation control cannot be. Needs
   multi-visit coverage, so it is really Phase 3.
-- **Blind human discrimination** — run, and **failed**: 20/20 correct, 4.5σ above chance. The
+- **Blind human discrimination** — round 1 **failed**: 20/20 correct, 4.5σ above chance. The
   generator reproduced all four statistics it was fitted to and was still obvious at a
-  glance. Three generator defects and one flaw in the test are fixed, and the generator has
-  been **refitted** (`tail_brightness` 0.02 → 0.22, `width_arcsec` 0.22 → 0.28, `clumpiness`
-  0.1 → 0.0) with all three statistics inside tolerance. A **second round of the test** is
-  the outstanding item: nothing measured so far can tell us whether the synthetics now
-  *look* right. The transplant-based numbers are unaffected; the parametric ones were
-  optimistic, and the length grid — which has no transplant anchor — must be re-measured.
-  See the [lab notebook](lab-notebook.md) and the
-  [ADR-0017 amendment](../adr/0017-synthetic-realism.md).
+  glance. Three generator defects and one flaw in the test are fixed; width variation is now
+  a *measured* statistic in the calibration objective rather than a guessed parameter; and
+  the generator is refitted (`tail_brightness` 0.10, `clumpiness` 0.0, `width_arcsec` 0.22,
+  `width_jitter` 0.8), all statistics inside tolerance with no parameter pinned to a grid
+  edge. An automatic pre-flight over **200 stamps** now finds nothing that separates the
+  classes, so **round 2 is ready to take** — that remains the real test, since a person uses
+  everything at once and the pre-flight scores three specific cues.
+  The transplant-based numbers stand; the parametric ones are now **0.29 mag pessimistic**
+  rather than optimistic, and the length grid — which has no transplant anchor — must still
+  be re-measured. See the [lab notebook](lab-notebook.md) and the
+  [ADR-0017 amendments](../adr/0017-synthetic-realism.md), including six rounds of tuning
+  against an AUC too noisy to steer by.
 - **Crowded positions.** Injections currently avoid bright sources, so this is completeness
   for uncrowded sky and that restriction is part of the selection function.
 - **More sites.** 44 gives ±7.5% per point, and background realisations are reused across

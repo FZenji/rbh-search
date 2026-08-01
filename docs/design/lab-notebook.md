@@ -29,6 +29,65 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-01 — I spent six rounds tuning against noise
+
+The most important entry here, because the error was in the method rather than in a number.
+
+### What happened
+
+The blind-test pre-flight scored width variation at **AUC 0.84** on 20 stamps, so the
+generator was changed, the statistic re-measured on the same 20 stamps, changed again, and
+so on. Six estimator designs in sequence: four segments then twelve, half-max then second
+moment, fixed band then adaptive-from-a-moment then adaptive-from-a-crossing, whole-stamp
+extent then feature extent. Readings of 0.84, 0.88, 0.49, 0.65, 0.70, each treated as
+evidence about the generator.
+
+**At 10 stamps per class the standard error on an AUC is 0.13.** Those readings are one to
+two standard errors apart. Worse, they were all taken against the same 20 stamps while the
+estimator was being varied — a garden of forking paths, constructed by me, one fork at a
+time. Every individual step looked like careful measurement-driven work.
+
+Re-scored on **200 stamps** (standard error 0.058), with the current generator:
+
+| statistic | real | synthetic | AUC |
+|---|---|---|---|
+| head contrast | 8.27 ± 14.13 | 11.18 ± 33.29 | 0.44 |
+| width variation | 0.180 ± 0.096 | 0.185 ± 0.089 | 0.47 |
+| flux variation | 0.786 ± 0.559 | 0.842 ± 0.523 | 0.46 |
+
+**Nothing separates the classes.** All three sit within about one standard error of chance.
+
+### What it changes
+
+The pre-flight now draws **its own sample of 200**, with a different seed from the human
+set. Two separate reasons, both learned here:
+
+- **Size.** The human test is capped at 20 because a person has to look at every stamp.
+  Nobody looks at the pre-flight's stamps, so its only constraint is a few seconds of
+  compute. There was never a reason for it to inherit the human limit.
+- **Independence.** Scoring the very set about to be handed over invites tuning until that
+  particular set passes. A different seed makes that impossible.
+
+### What was nonetheless real
+
+Not all of the six rounds were noise-chasing; three found genuine defects, and they stand
+because each was verified by something other than the AUC:
+
+- the **clip bias** in `(1 + jitter * wobble)`, which made a higher jitter widen the feature
+  on average rather than vary it — an inspectable property of the formula, not a statistic;
+- the **estimator mismatch**, where the calibration fitted a four-segment half-max while the
+  pre-flight scored a twelve-segment second moment, so the objective and the test measured
+  different things — a structural fact, confirmed by both estimators on the same stamps
+  giving ratios of 1.11 and 1.31;
+- **`tail_brightness` pinned** against a bound created by trimming a grid to save time.
+
+The lesson is not "measure less". It is that **a measurement's error bar decides whether it
+can be steered by**, and an AUC from 20 samples cannot resolve the differences that were
+driving these decisions. The cheap fix — more samples, since no human was involved — was
+available from the start.
+
+---
+
 ## 2026-08-01 — The refit costs 0.41 mag, and I repeated the terminal-knot mistake
 
 Two findings from the first measurements after the refit, both of which say the generator
@@ -58,6 +117,20 @@ cannot move**.
 Note which way this cuts. A pessimistic generator makes the published limits conservative
 rather than overstated, so it is the safer of the two errors — but "safe" is not "measured",
 and the transplant remains the number to quote.
+
+**Final state after the width-variation work and the refit** (`tail_brightness` 0.10,
+`clumpiness` 0.0, `width_arcsec` 0.22, `width_jitter` 0.8):
+
+| | 50% completeness limit |
+|---|---|
+| **transplant (real pixels) — the number to quote** | **24.58** |
+| parametric, c = 0.0 | 24.40 |
+| parametric, c = 0.3 / 0.6 / 0.9 | 24.29 / 24.32 / 24.32 |
+
+Worst-case generator-versus-transplant gap **−0.29 mag**, down from −0.41, and the
+clumpiness spread is **0.11 mag** — now reported as the separate quantity it always was.
+The generator is still mildly pessimistic and that is still unexplained by the calibration,
+which is evaluated at a brightness where completeness is saturated. Quote the transplant.
 
 ### A reporting bug that would have hidden it
 

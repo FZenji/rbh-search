@@ -27,7 +27,12 @@ from typing import TYPE_CHECKING
 import numpy as np
 from scipy import ndimage
 
-from rbh.geometry import principal_axis
+from rbh.geometry import (
+    WIDTH_BAND_PIXELS,
+    WIDTH_SEGMENTS,
+    principal_axis,
+    transverse_variation,
+)
 from rbh.inject import free_positions, inject_synthetic, inject_template
 from rbh.synthetic import WakeParameters
 from rbh.template import transform_template
@@ -210,7 +215,9 @@ PREFLIGHT_STATISTICS = ("head_contrast", "width_variation", "flux_variation")
 PREFLIGHT_AUC_MARGIN = 0.28
 
 
-def stamp_statistics(pixels: NDArray[np.float32], n_segments: int = 12) -> dict[str, float]:
+def stamp_statistics(
+    pixels: NDArray[np.float32], n_segments: int = WIDTH_SEGMENTS
+) -> dict[str, float]:
     """Measure the tell statistics on one stamp.
 
     Works on the stamp's own pixels rather than the rendered PNG, so display stretch and
@@ -237,31 +244,38 @@ def stamp_statistics(pixels: NDArray[np.float32], n_segments: int = 12) -> dict[
     along, across = offset @ major, offset @ minor
     weight = np.clip(smooth.ravel() - np.median(smooth), 0.0, None)
 
-    band = np.abs(across) < 6.0
+    # Restrict to the feature's own extent along its axis, exactly as the morphology path
+    # restricts to the detection's. Measuring across a whole stamp instead spreads the
+    # segments over mostly empty sky and dilutes the profile with background.
+    core_along = (points - centre) @ major
+    extent = (along >= core_along.min()) & (along <= core_along.max())
+    along, across, weight = along[extent], across[extent], weight[extent]
+
+    band = np.abs(across) < WIDTH_BAND_PIXELS
     if band.sum() < n_segments * 4:
         return nan
     edges = np.linspace(along[band].min(), along[band].max(), n_segments + 1)
     which = np.digitize(along[band], edges) - 1
 
-    flux, width = [], []
+    flux = []
     for segment in range(n_segments):
         selected = band.copy()
         selected[band] = which == segment
         w = weight[selected]
-        if w.sum() <= 0:
-            continue
-        a = across[selected]
-        flux.append(float(w.sum()))
-        width.append(float(np.sqrt(np.average((a - np.average(a, weights=w)) ** 2, weights=w))))
+        if w.sum() > 0:
+            flux.append(float(w.sum()))
 
     if len(flux) < 4:
         return nan
-    flux_values, width_values = np.array(flux), np.array(width)
+    flux_values = np.array(flux)
     return {
         # "A large head at the start of the wake": brightest segment against the typical one.
         "head_contrast": float(flux_values.max() / max(np.median(flux_values), 1e-9)),
-        # "Much more irregular, a bit blobby" against a constant-width ribbon.
-        "width_variation": float(width_values.std() / max(width_values.mean(), 1e-9)),
+        # "Much more irregular, a bit blobby" against a constant-width ribbon. Measured by
+        # the same function the calibration objective fits, which is the whole point: for a
+        # while these were two different estimators and the generator was fitted to one
+        # while being tested against the other.
+        "width_variation": transverse_variation(along, across, weight, n_segments=n_segments),
         "flux_variation": float(flux_values.std() / max(flux_values.mean(), 1e-9)),
     }
 

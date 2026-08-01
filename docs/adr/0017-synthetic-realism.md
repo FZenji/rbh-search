@@ -288,6 +288,32 @@ has a tell and there is no point spending a person's attention on it. It runs au
 rather than on request because the one time it was left to be remembered, a set with an AUC
 of 0.84 came within a message of being handed over.
 
+## Amendment, 2026-08-01 (the pre-flight needs its own, larger sample)
+
+That 0.84 did not survive contact with a decent sample size. The pre-flight had inherited
+the human test's 20 stamps, where the standard error on an AUC is **0.13** — and six
+successive estimator designs were steered by readings of 0.84, 0.88, 0.49, 0.65 and 0.70,
+all taken against the *same* 20 stamps while the estimator itself was being varied. A garden
+of forking paths, one fork at a time, each step looking like careful measurement-driven work.
+
+Re-scored on 200 stamps, standard error 0.058: head contrast 0.44, width variation 0.47,
+flux variation 0.46. **Nothing separates the classes.**
+
+Two changes follow, and both are now properties of `rbh blind-test`:
+
+1. **The pre-flight draws its own sample, defaulting to 200.** The human set is small
+   because a person looks at every stamp; nobody looks at these, so there was never a reason
+   for the limit to carry over.
+2. **It uses a different seed from the set being handed over.** Scoring the very set about to
+   be given to a person invites tuning until that particular set passes.
+
+This does not weaken the ADR's central claim — a summary statistic is no substitute for a
+human — but it adds a corollary. **A check is only as good as its error bar**, and a check
+too coarse to resolve the differences it is being used to decide between is worse than none,
+because its noise reads as signal. Three of the six rounds did find genuine defects; those
+stand because each was confirmed by something other than the AUC, and they are recorded in
+the lab notebook alongside the ones that were not.
+
 ## Consequences
 
 - Phase 2 gains a transplant machinery step before the parametric generator, so the

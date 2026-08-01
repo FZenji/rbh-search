@@ -435,6 +435,14 @@ def blind_test(
         Path, typer.Option(help="Where to write the stamps and the answer key.")
     ] = Path("runs/blind-test"),
     count: Annotated[int, typer.Option(help="Number of stamps; half of each class.")] = 20,
+    preflight_count: Annotated[
+        int,
+        typer.Option(
+            help="Stamps for the automatic pre-flight, drawn separately. Large because "
+            "nobody looks at them: 20 gives a standard error of 0.13 on an AUC, which is "
+            "too coarse to steer by."
+        ),
+    ] = 200,
     half_size: Annotated[int, typer.Option(help="Stamp half-width in pixels.")] = 110,
     seed: Annotated[int, typer.Option(help="Seed for the set.")] = 31415,
 ) -> None:
@@ -468,7 +476,7 @@ def blind_test(
         tiles,
         reference_template(FIXTURE_PATH),
         rng=np.random.default_rng(seed),
-        count=count,
+        count=count,  # the human set: small, because a person looks at every one
         stamp_half_size=half_size,
     )
     low, high = shared_limits(stamps)
@@ -500,10 +508,26 @@ def blind_test(
     )
     typer.echo("answer key in key.json - do not read it before taking the test")
 
-    # Run automatically rather than on request. It is cheap, and the one time it was left
-    # to be remembered, a set with an AUC of 0.84 was very nearly handed to a person.
-    auc = preflight(stamps)
-    typer.echo("\npre-flight (0.50 = classes indistinguishable on that cue):")
+    # Scored on its own, much larger sample, drawn with a different seed. Two reasons, both
+    # learned the hard way. The human set is capped at 20 because a person has to look at
+    # every stamp, and at 10 per class the standard error on an AUC is 0.13 - large enough
+    # that six successive estimator designs were steered by differences of one to two
+    # standard errors, on the same 20 stamps, which is a garden of forking paths. And
+    # scoring the very set being handed over invites tuning until that particular set
+    # passes. Nobody looks at these, so the only cost is a few seconds.
+    preflight_stamps = make_blind_set(
+        tiles,
+        reference_template(FIXTURE_PATH),
+        rng=np.random.default_rng(seed + 1),
+        count=preflight_count,
+        stamp_half_size=half_size,
+    )
+    auc = preflight(preflight_stamps)
+    typer.echo(
+        f"\npre-flight on {len(preflight_stamps)} separate stamps, standard error "
+        f"{math.sqrt(1.0 / (1.5 * preflight_count)):.2f} "
+        "(0.50 = classes indistinguishable on that cue):"
+    )
     for name, value in auc.items():
         typer.echo(f"  {name:<18}{value:.2f}")
     separating = separating_statistics(auc)
