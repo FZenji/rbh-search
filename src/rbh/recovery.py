@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from numpy.random import Generator
 
     from rbh.config import SelectionWindow
+    from rbh.detect import RidgeDetection
     from rbh.inject import Injection
     from rbh.tile import Tile
 
@@ -150,12 +151,10 @@ def run_trial(
 
     truth = SkyCoord(injected.wcs.pixel_to_world(float(centre[1]), float(centre[0])))
     n_fragments = sum(
-        1
-        for fragment in fragments
-        if _matches(fragment, injected, truth, match_radius_arcsec, image)
+        1 for fragment in fragments if _matches(fragment, injected, truth, match_radius_arcsec)
     )
 
-    matched = [d for d in linked if _matches(d, injected, truth, match_radius_arcsec, image)]
+    matched = [d for d in linked if _matches(d, injected, truth, match_radius_arcsec)]
     if not matched:
         return Trial(
             injection=record,
@@ -177,15 +176,23 @@ def run_trial(
 
 
 def _matches(
-    detection: object,
+    detection: RidgeDetection,
     tile: Tile,
     truth: SkyCoord,
     radius_arcsec: float,
-    image: np.ndarray,
 ) -> bool:
-    """Whether a detection's centroid lies within ``radius_arcsec`` of the injection."""
-    morphology = measure(detection, image, tile.wcs, tile.pixel_scale_arcsec)  # type: ignore[arg-type]
-    centroid = SkyCoord(morphology.centroid_ra_deg, morphology.centroid_dec_deg, unit="deg")
+    """Whether a detection's centroid lies within ``radius_arcsec`` of the injection.
+
+    Only the centroid is needed, so only the centroid is computed. This used to call
+    :func:`~rbh.morphology.measure` and discard everything but two of its twelve fields,
+    which cost about a fifth of the run time of a trial: the match is tested once per
+    fragment and again per linked detection, roughly twenty times per trial, while the
+    full measurement is wanted exactly once, for the winner. The centroid here is the
+    same flux-unweighted mean of the detection's pixels that ``measure`` reports, so the
+    two agree exactly.
+    """
+    centre = np.column_stack([detection.xs, detection.ys]).astype(np.float64).mean(axis=0)
+    centroid = SkyCoord(tile.wcs.pixel_to_world(centre[0], centre[1]))
     return bool(truth.separation(centroid).arcsec <= radius_arcsec)
 
 

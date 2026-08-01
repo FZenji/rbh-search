@@ -50,8 +50,10 @@ class WakeParameters:
     """
 
     length_arcsec: float = 8.10
-    #: Fitted, and degenerate with the effective PSF - see the class docstring.
-    width_arcsec: float = 0.22
+    #: Fitted, and degenerate with the effective PSF - see the class docstring. Refitted
+    #: from 0.22 after the blind test: ``width_jitter`` narrows the feature over part of
+    #: its length, so the base width has to grow to keep the measured width on target.
+    width_arcsec: float = 0.28
     position_angle_deg: float = 148.3
     #: Maximum deviation of the spine from a straight line. The sign and the position of the
     #: bend are randomised per render: an earlier version bowed every wake the same way, and
@@ -61,13 +63,23 @@ class WakeParameters:
     #: in width as well as brightness; a constant-width Gaussian ribbon reads as "extremely
     #: clean and linear", which is how the blind test was won.
     width_jitter: float = 0.45
-    #: 0 = a smooth ribbon, 1 = flux entirely concentrated into discrete knots.
-    clumpiness: float = 0.1
+    #: 0 = a smooth ribbon, 1 = flux entirely concentrated into discrete knots. The fit
+    #: prefers zero, which is the floor and so cannot be widened downwards. Read it as
+    #: "no *additional* clumping is needed": the width and brightness variation added
+    #: after the blind test already break the feature up, and RBH-1's own fragmentation
+    #: is the detection threshold cutting a smooth feature at noise level rather than
+    #: intrinsic lumpiness. The completeness grid varies this axis explicitly regardless,
+    #: because the answer must not rest on one assumed value.
+    clumpiness: float = 0.0
     n_clumps: int = 6
     #: Width of an individual knot along the axis, as a fraction of total length.
     clump_length_fraction: float = 0.07
-    #: Brightness of the tail end relative to the tip end, before clumping.
-    tail_brightness: float = 0.02
+    #: Brightness of the tail end relative to the tip end, before clumping. Refitted from
+    #: 0.02 after the blind test, and the largest single change: the old value made the
+    #: feature fade almost to nothing at one end, which together with the terminal knot at
+    #: the other produced the "shooting star" a human picked out every time. At 0.22 both
+    #: ends carry real flux, as the transplanted real object does.
+    tail_brightness: float = 0.22
     #: Extra flux in a compact knot at the leading tip, as a fraction of the total.
     #:
     #: Default **0**, changed from 0.12 after the blind test. None of the four calibration

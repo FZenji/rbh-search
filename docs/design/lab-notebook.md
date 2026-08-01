@@ -29,6 +29,97 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-01 — Recalibration after the blind test, and a 9× faster measurement loop
+
+### The generator, refitted
+
+Rerun against the transplant with the four blind-test fixes in place. All three fitted
+statistics land inside tolerance:
+
+| | length | width | axis ratio | fragmentation |
+|---|---|---|---|---|
+| transplant (target) | 5.61″ | 0.274″ | 20.4 | 86% |
+| generator (best fit) | 5.50″ | 0.298″ | 18.2 | 95% |
+| tolerance | 0.40″ | 0.025″ | — | 0.15 |
+
+Combined cost 1.84, of which width contributes 0.96 — nearly its whole budget. Width is
+the tightest constraint and remains the one to watch.
+
+New fitted defaults, and **the changes are large**, which is the honest measure of how
+much the old fit was absorbing the defects:
+
+| parameter | was | now | why it moved |
+|---|---|---|---|
+| `tail_brightness` | 0.02 | **0.22** | the old value faded one end almost to nothing, which with the terminal knot at the other end made the "shooting star" |
+| `width_arcsec` | 0.22 | **0.28** | `width_jitter` narrows the feature over part of its length, so the base has to grow to hold the measured width |
+| `clumpiness` | 0.1 | **0.0** | the new width and brightness variation already break the feature up |
+
+### The fit was pinned, and nothing would have said so
+
+The first rerun put `width_arcsec` at 0.28 — **the largest value in the grid**. A fit on
+the edge of its search range is not the best fit, it is the best *available*, and the true
+optimum may lie outside. It is a nasty failure mode because it looks exactly like success:
+every reported statistic sat inside tolerance while the parameter strained against a bound
+that had been chosen by guesswork.
+
+Extending the grid to 0.40 and re-running: **the answer did not change.** 0.28 is a genuine
+interior optimum; 0.34 and 0.40 are worse. So the concern was right to raise and is now
+settled by measurement rather than by assumption.
+
+`CalibrationResult.is_pinned` now detects this and the CLI prints a warning, so it cannot
+happen silently again. This is the same lesson as the terminal knot, one level up: there,
+a parameter no statistic constrained; here, a parameter the search could not reach.
+
+**The check's first version was wrong**, and usefully so. It fired immediately on
+`clumpiness=0.0` — but zero clumpiness is a *physical floor*, a perfectly smooth feature,
+not an arbitrary bound that could be widened. A warning that fires on a correct answer is
+worse than no warning, because it teaches the reader to skip it. `PHYSICAL_FLOORS` now
+exempts the bottom of a range that has nothing below it, while still flagging the top of
+that same parameter.
+
+### Speed: 9× on the measurement loop
+
+The gates were never the bottleneck. Measured, on this machine:
+
+| | time |
+|---|---|
+| full test suite | ~75 s |
+| ruff + mypy | ~25 s |
+| CI, all four jobs in parallel | ~1 min |
+| **one calibration run** | **~20 min** |
+
+Two changes, both of which leave every number bit-identical:
+
+1. **`_matches` measured everything and used the centroid.** It called
+   `morphology.measure` — width profile, spine binning, endpoints, position angle — once
+   per fragment and again per linked detection, roughly twenty times a trial, then read two
+   of the twelve fields. The full measurement is wanted exactly once, for the winner.
+   Computing only the centroid: **17% off every trial**.
+2. **Trials now run across cores** (`rbh.parallel`). This is safe for a specific reason
+   worth stating: each trial seeds its own generator as `seed + index`, so no trial can
+   observe another and execution order cannot matter. Had the seeding been sequential —
+   one generator threaded through the loop — parallelising would have silently changed
+   every measured number, and would have been a change to the science rather than to the
+   plumbing. `tests/test_parallel.py` asserts serial and parallel agree exactly rather than
+   leaving that as an argument.
+
+Measured together: **96 configurations in 5.7 min, against 48 in 20 min serially** — 3.6 s
+per configuration against 25 s, a **7× speedup** on 14 workers, plus the 17%. Not 14×
+because the batch does not divide evenly across workers and each task pickles its tile
+across.
+
+Two things learned about the pool, both Windows-specific:
+
+- **Spawned workers re-import `__main__`.** A script without an `if __name__ == "__main__"`
+  guard fork-bombs and the pool dies with `BrokenProcessPool`. The installed `rbh` command
+  is fine; ad-hoc scripts calling into `rbh.studies` are not, unless guarded.
+- **pytest's `filterwarnings = ["error"]` does not reach into worker processes.** A warning
+  raised in a worker would print rather than fail the run. Hence `MIN_ITEMS_FOR_POOL`: small
+  batches stay inline, which keeps the unit tests single-process where that check still
+  bites, and the pool only engages for measurement runs where it earns its keep.
+
+---
+
 ## 2026-08-01 — Phase 2: the blind test failed, 20 out of 20
 
 ADR-0017's blind test was taken. **The result is 20/20 correct, 4.5σ above chance.** The

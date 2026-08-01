@@ -145,10 +145,13 @@ The completeness grid above is one slice, not a selection function. Still to do:
   multi-visit coverage, so it is really Phase 3.
 - **Blind human discrimination** — run, and **failed**: 20/20 correct, 4.5σ above chance. The
   generator reproduced all four statistics it was fitted to and was still obvious at a
-  glance. Three generator defects and one flaw in the test are fixed; recalibration and a
-  second round are outstanding. The transplant-based numbers are unaffected; the parametric
-  ones are optimistic, and the length grid — which has no transplant anchor — must be
-  re-measured. See the [lab notebook](lab-notebook.md) and the
+  glance. Three generator defects and one flaw in the test are fixed, and the generator has
+  been **refitted** (`tail_brightness` 0.02 → 0.22, `width_arcsec` 0.22 → 0.28, `clumpiness`
+  0.1 → 0.0) with all three statistics inside tolerance. A **second round of the test** is
+  the outstanding item: nothing measured so far can tell us whether the synthetics now
+  *look* right. The transplant-based numbers are unaffected; the parametric ones were
+  optimistic, and the length grid — which has no transplant anchor — must be re-measured.
+  See the [lab notebook](lab-notebook.md) and the
   [ADR-0017 amendment](../adr/0017-synthetic-realism.md).
 - **Crowded positions.** Injections currently avoid bright sources, so this is completeness
   for uncrowded sky and that restriction is part of the selection function.

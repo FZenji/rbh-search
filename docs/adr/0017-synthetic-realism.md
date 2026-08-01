@@ -214,6 +214,39 @@ measured by any of the four statistics, so the calibration was free to leave it 
 turned out to be the loudest signal in the image. For any fitted model: ask which parameters
 the objective actually constrains, and what is carrying the rest.
 
+## Amendment, 2026-08-01 (recalibrated, and a second way a fit can lie)
+
+Refitted against the transplant with the four blind-test fixes in place. All three fitted
+statistics land inside tolerance — 5.50″ against 5.61″, 0.298″ against 0.274″, 95%
+fragmentation against 86% — at a combined cost of 1.84, of which width contributes 0.96.
+Width remains the binding constraint.
+
+The fitted parameters moved a long way, which measures how much the old fit had been
+absorbing the defects: `tail_brightness` 0.02 → **0.22**, `width_arcsec` 0.22 → **0.28**,
+`clumpiness` 0.1 → **0.0**.
+
+**A second failure mode, caught this time by the code rather than by eye.** The first rerun
+put `width_arcsec` on the largest value in the grid. A fit at the edge of its search range
+is not the best fit but the best *available*, and it is dangerous precisely because it
+presents as success: every statistic inside tolerance, while the parameter strains against a
+bound chosen by guesswork. Extending the grid to 0.40 and re-running left the answer
+unchanged, so 0.28 is a genuine interior optimum — the concern was real and is now settled
+by measurement.
+
+`CalibrationResult.is_pinned` now reports this and the CLI warns on it. Note this is the
+same lesson as the terminal knot one level up: there, a parameter that no statistic
+constrained; here, a parameter the search could not reach. Both are ways for a fit to be
+confidently wrong while every number it reports looks fine.
+
+The check's first version flagged `clumpiness=0.0`, which is a *physical floor* rather than
+an arbitrary bound — a perfectly smooth feature, with nothing below it to widen towards. A
+warning that fires on a correct answer trains the reader to ignore it, so `PHYSICAL_FLOORS`
+now exempts such a floor while still flagging the top of the same parameter.
+
+**Still outstanding:** the length grid, which has no transplant anchor, and a second round
+of the blind test. Neither the recalibration nor the pinning check tells us whether the
+synthetics now *look* right; only a person can, which is the whole argument of this ADR.
+
 ## Consequences
 
 - Phase 2 gains a transplant machinery step before the parametric generator, so the

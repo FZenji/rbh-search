@@ -124,6 +124,13 @@ def calibrate(
         "runs/calibration.json"
     ),
     per_tile: Annotated[int, typer.Option(help="Injection sites per destination tile.")] = 4,
+    workers: Annotated[
+        int | None,
+        typer.Option(
+            help="Worker processes. Trials are seeded independently, so this changes "
+            "the speed and nothing else. Default uses all cores but two."
+        ),
+    ] = None,
 ) -> None:
     """Fit the synthetic generator to the transplanted real RBH-1 (ADR-0017 Tier 2).
 
@@ -140,7 +147,7 @@ def calibrate(
         f"{len(sites)} injection sites; template mag={reference.total_mag_ab:.2f} "
         f"colour={reference.colour_ab:+.2f}"
     )
-    result = calibrate_generator(sites, reference)
+    result = calibrate_generator(sites, reference, workers=workers)
 
     typer.echo(f"\ntransplant target: {_fmt(result.target)}")
     typer.echo(f"best fit         : {_fmt(result.best_statistics)}  cost={result.best_cost:.2f}")
@@ -148,6 +155,13 @@ def calibrate(
         f"  tail_brightness={result.best.tail_brightness} "
         f"clumpiness={result.best.clumpiness} width_arcsec={result.best.width_arcsec}"
     )
+    if result.is_pinned:
+        typer.secho(
+            f"  WARNING: {', '.join(result.pinned)} sits on the edge of the scanned grid. "
+            "The optimum may lie outside it, so widen the range and re-run before "
+            "trusting this fit.",
+            fg=typer.colors.YELLOW,
+        )
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result.to_dict(), indent=1), encoding="utf-8")
     typer.echo(f"wrote {out}")
@@ -162,6 +176,13 @@ def completeness(
         "runs/completeness.json"
     ),
     per_tile: Annotated[int, typer.Option(help="Injection sites per destination tile.")] = 4,
+    workers: Annotated[
+        int | None,
+        typer.Option(
+            help="Worker processes. Trials are seeded independently, so this changes "
+            "the speed and nothing else. Default uses all cores but two."
+        ),
+    ] = None,
 ) -> None:
     """Measure completeness against brightness, at several clumpiness values.
 
@@ -181,7 +202,7 @@ def completeness(
     sites = collect_sites(FIXTURE_PATH, destinations, per_tile=per_tile)
     typer.echo(f"{len(sites)} injection sites; template mag={reference.total_mag_ab:.2f}")
 
-    rows = completeness_grid(sites, reference)
+    rows = completeness_grid(sites, reference, workers=workers)
     sources: list[str] = []
     for row in rows:
         if row["source"] not in sources:
@@ -349,6 +370,13 @@ def completeness_length(
         "runs/completeness-length.json"
     ),
     per_tile: Annotated[int, typer.Option(help="Injection sites per tile.")] = 3,
+    workers: Annotated[
+        int | None,
+        typer.Option(
+            help="Worker processes. Trials are seeded independently, so this changes "
+            "the speed and nothing else. Default uses all cores but two."
+        ),
+    ] = None,
 ) -> None:
     """Measure completeness across feature length as well as brightness.
 
@@ -361,7 +389,7 @@ def completeness_length(
     from rbh.studies import completeness_vs_length, mean_surface_brightness
     from rbh.synthetic import WakeParameters
 
-    rows = completeness_vs_length(FIXTURE_PATH, destinations, per_tile=per_tile)
+    rows = completeness_vs_length(FIXTURE_PATH, destinations, per_tile=per_tile, workers=workers)
     width = WakeParameters().width_arcsec
 
     lengths = sorted({float(r["length_arcsec"]) for r in rows})

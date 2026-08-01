@@ -19,13 +19,14 @@ from __future__ import annotations
 import itertools
 import math
 from dataclasses import asdict, dataclass, replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import numpy as np
 from scipy import ndimage
 
 from rbh.config import SelectionWindow
 from rbh.inject import Injection, free_positions, inject_synthetic, inject_template
+from rbh.parallel import map_trials
 from rbh.pipeline import detect_in_tile
 from rbh.recovery import Trial, run_trial, summarise
 from rbh.synthetic import WakeParameters
@@ -159,6 +160,51 @@ def _parametric_injector(
     return inject
 
 
+class _TransplantTask(NamedTuple):
+    """One transplant trial, described entirely by picklable data.
+
+    The injectors elsewhere in this module are closures over a live generator, which
+    cannot cross a process boundary, so a parallel worker is handed the ingredients and
+    builds its own on the far side. See :mod:`rbh.parallel`.
+    """
+
+    tile: Tile
+    centre: tuple[int, int]
+    template: SourceTemplate
+    flux_scale: float
+    window: SelectionWindow
+    seed: int
+
+
+class _ParametricTask(NamedTuple):
+    """One parametric trial, described entirely by picklable data."""
+
+    tile: Tile
+    centre: tuple[int, int]
+    params: WakeParameters
+    psf_fwhm_arcsec: float
+    window: SelectionWindow
+    seed: int
+    randomise_angle: bool
+
+
+def _transplant_trial(task: _TransplantTask) -> Trial:
+    rng = np.random.default_rng(task.seed)
+    injector = _transplant_injector(task.template, task.flux_scale, rng)
+    return run_trial(task.tile, injector, task.centre, window=task.window, rng=rng)
+
+
+def _parametric_trial(task: _ParametricTask) -> Trial:
+    rng = np.random.default_rng(task.seed)
+    local = (
+        replace(task.params, position_angle_deg=float(rng.uniform(0.0, 180.0)))
+        if task.randomise_angle
+        else task.params
+    )
+    injector = _parametric_injector(local, task.psf_fwhm_arcsec, rng)
+    return run_trial(task.tile, injector, task.centre, window=task.window, rng=rng)
+
+
 def _run_transplant(
     sites: Sequence[InjectionSite],
     reference: ReferenceTemplate,
@@ -166,13 +212,15 @@ def _run_transplant(
     flux_scale: float,
     window: SelectionWindow,
     seed: int,
+    workers: int | None = None,
 ) -> dict[str, float]:
-    trials = []
-    for index, site in enumerate(sites):
-        rng = np.random.default_rng(seed + index)
-        injector = _transplant_injector(reference.template, flux_scale, rng)
-        trials.append(run_trial(site.tile, injector, site.centre, window=window, rng=rng))
-    return _statistics(trials)
+    tasks = [
+        _TransplantTask(
+            site.tile, site.centre, reference.template, flux_scale, window, seed + index
+        )
+        for index, site in enumerate(sites)
+    ]
+    return _statistics(map_trials(_transplant_trial, tasks, workers=workers))
 
 
 def _run_parametric(
@@ -183,18 +231,21 @@ def _run_parametric(
     window: SelectionWindow,
     seed: int,
     randomise_angle: bool = True,
+    workers: int | None = None,
 ) -> dict[str, float]:
-    trials = []
-    for index, site in enumerate(sites):
-        rng = np.random.default_rng(seed + index)
-        local = (
-            replace(params, position_angle_deg=float(rng.uniform(0.0, 180.0)))
-            if randomise_angle
-            else params
+    tasks = [
+        _ParametricTask(
+            site.tile,
+            site.centre,
+            params,
+            psf_fwhm_arcsec,
+            window,
+            seed + index,
+            randomise_angle,
         )
-        injector = _parametric_injector(local, psf_fwhm_arcsec, rng)
-        trials.append(run_trial(site.tile, injector, site.centre, window=window, rng=rng))
-    return _statistics(trials)
+        for index, site in enumerate(sites)
+    ]
+    return _statistics(map_trials(_parametric_trial, tasks, workers=workers))
 
 
 def _statistics(trials: Sequence[Trial]) -> dict[str, float]:
@@ -229,6 +280,22 @@ class CalibrationResult:
     scanned: list[dict[str, float]]
     psf_fwhm_arcsec: float
     n_sites: int
+    #: Parameters whose best value sits on an end of the range scanned. See
+    #: :attr:`is_pinned` - a non-empty list here means the fit should not be trusted.
+    pinned: tuple[str, ...] = ()
+
+    @property
+    def is_pinned(self) -> bool:
+        """Whether the best fit sits on an edge of the search grid.
+
+        A fit at the edge is not the best fit; it is the best *available*, and the true
+        optimum probably lies outside the range scanned. This is worth flagging loudly
+        because it looks exactly like a successful fit: the reported statistics can sit
+        comfortably inside tolerance while the parameter is straining against a bound
+        that was chosen by guesswork. The first recalibration after the blind test did
+        precisely that, pinning ``width_arcsec`` at the top of its range.
+        """
+        return bool(self.pinned)
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-serialisable record of the whole scan."""
@@ -239,6 +306,7 @@ class CalibrationResult:
             "best_parameters": asdict(self.best),
             "best_statistics": self.best_statistics,
             "best_cost": self.best_cost,
+            "pinned": list(self.pinned),
             "scanned": self.scanned,
             "tolerances": CALIBRATION_TOLERANCES,
         }
@@ -257,11 +325,12 @@ def calibrate_generator(
     *,
     tail_values: Sequence[float] = (0.02, 0.10, 0.22, 0.40),
     clumpiness_values: Sequence[float] = (0.0, 0.2, 0.4, 0.6),
-    width_values: Sequence[float] = (0.10, 0.16, 0.22, 0.28),
+    width_values: Sequence[float] = (0.10, 0.16, 0.22, 0.28, 0.34, 0.40),
     psf_fwhm_arcsec: float = DEFAULT_PSF_FWHM_ARCSEC,
     length_arcsec: float = DEFAULT_LENGTH_ARCSEC,
     window: SelectionWindow | None = None,
     seed: int = 5000,
+    workers: int | None = None,
 ) -> CalibrationResult:
     """Fit the generator to the transplant over a joint grid (ADR-0017 Tier 2).
 
@@ -270,7 +339,9 @@ def calibrate_generator(
     recovered length drops; fitting width after length therefore undoes the length match.
     """
     window = window or SelectionWindow()
-    target = _run_transplant(sites, reference, flux_scale=1.0, window=window, seed=seed)
+    target = _run_transplant(
+        sites, reference, flux_scale=1.0, window=window, seed=seed, workers=workers
+    )
 
     scanned: list[dict[str, float]] = []
     best: tuple[float, WakeParameters, dict[str, float]] | None = None
@@ -284,7 +355,12 @@ def calibrate_generator(
             colour_ab=reference.colour_ab,
         )
         got = _run_parametric(
-            sites, params, psf_fwhm_arcsec=psf_fwhm_arcsec, window=window, seed=seed
+            sites,
+            params,
+            psf_fwhm_arcsec=psf_fwhm_arcsec,
+            window=window,
+            seed=seed,
+            workers=workers,
         )
         cost = calibration_cost(got, target)
         scanned.append(
@@ -310,7 +386,48 @@ def calibrate_generator(
         scanned=sorted(scanned, key=lambda row: row["cost"]),
         psf_fwhm_arcsec=psf_fwhm_arcsec,
         n_sites=len(sites),
+        pinned=_pinned_parameters(
+            best[1],
+            {
+                "tail_brightness": tail_values,
+                "clumpiness": clumpiness_values,
+                "width_arcsec": width_values,
+            },
+        ),
     )
+
+
+#: Values below which a fitted parameter has no physical meaning. A grid whose lowest
+#: value is one of these is not an arbitrary bound that could be widened, so a fit
+#: landing there is a real answer rather than a truncated search: zero clumpiness is a
+#: perfectly smooth feature and zero tail brightness is no tail, both of which the
+#: generator can express. Without this the check flags every smooth best fit and quickly
+#: trains the reader to ignore it.
+PHYSICAL_FLOORS = {"clumpiness": 0.0, "tail_brightness": 0.0}
+
+
+def _pinned_parameters(best: WakeParameters, grids: dict[str, Sequence[float]]) -> tuple[str, ...]:
+    """Name the fitted parameters whose best value sits at an end of their scanned range.
+
+    Two ends are not alike. Landing on the top of a range always means the search may
+    have been truncated. Landing on the bottom means that only when the bottom was a
+    choice -- see :data:`PHYSICAL_FLOORS`.
+
+    A single-valued grid cannot pin anything and is skipped, otherwise every parameter
+    held deliberately fixed would report itself as a problem.
+    """
+    fitted = asdict(best)
+    pinned = []
+    for name, values in grids.items():
+        if len(set(values)) <= 1:
+            continue
+        low, high = min(values), max(values)
+        at_floor = math.isclose(fitted[name], low) and not math.isclose(
+            low, PHYSICAL_FLOORS.get(name, -math.inf)
+        )
+        if at_floor or math.isclose(fitted[name], high):
+            pinned.append(name)
+    return tuple(pinned)
 
 
 def completeness_grid(
@@ -323,6 +440,7 @@ def completeness_grid(
     psf_fwhm_arcsec: float = DEFAULT_PSF_FWHM_ARCSEC,
     window: SelectionWindow | None = None,
     seed: int = 7000,
+    workers: int | None = None,
 ) -> list[dict[str, float | str]]:
     """Measure completeness against magnitude, for the transplant and several clumpiness values.
 
@@ -337,7 +455,9 @@ def completeness_grid(
 
     for magnitude in magnitudes:
         scale = 10.0 ** (-0.4 * (magnitude - reference.total_mag_ab))
-        got = _run_transplant(sites, reference, flux_scale=scale, window=window, seed=seed)
+        got = _run_transplant(
+            sites, reference, flux_scale=scale, window=window, seed=seed, workers=workers
+        )
         rows.append({"source": "transplant", "mag": magnitude, **got})
 
     for clumpiness in clumpiness_values:
@@ -349,7 +469,12 @@ def completeness_grid(
                 colour_ab=reference.colour_ab,
             )
             got = _run_parametric(
-                sites, local, psf_fwhm_arcsec=psf_fwhm_arcsec, window=window, seed=seed
+                sites,
+                local,
+                psf_fwhm_arcsec=psf_fwhm_arcsec,
+                window=window,
+                seed=seed,
+                workers=workers,
             )
             rows.append(
                 {
@@ -372,6 +497,7 @@ def completeness_vs_length(
     window: SelectionWindow | None = None,
     per_tile: int = 3,
     seed: int = 9000,
+    workers: int | None = None,
 ) -> list[dict[str, float | str]]:
     """Measure completeness across the length axis as well as brightness.
 
@@ -427,7 +553,12 @@ def completeness_vs_length(
                 colour_ab=reference.colour_ab,
             )
             got = _run_parametric(
-                sites, local, psf_fwhm_arcsec=psf_fwhm_arcsec, window=window, seed=seed
+                sites,
+                local,
+                psf_fwhm_arcsec=psf_fwhm_arcsec,
+                window=window,
+                seed=seed,
+                workers=workers,
             )
             rows.append(
                 {
