@@ -79,6 +79,56 @@ def test_curvature_bends_the_spine() -> None:
     assert not np.allclose(straight, bent)
 
 
+def test_curvature_bends_both_ways_across_renders() -> None:
+    """Every wake bowing the same way was a tell a human used to score 20/20 blind.
+
+    Rendered horizontally so the bend shows as a vertical displacement of the spine, then
+    checked that the sign of that displacement is not always the same.
+    """
+    offsets = []
+    for seed in range(12):
+        params = WakeParameters(
+            length_arcsec=8.0,
+            clumpiness=0.0,
+            width_jitter=0.0,
+            curvature_arcsec=0.8,
+            position_angle_deg=90.0,
+            terminal_knot_fraction=0.0,
+        )
+        image = render_wake(
+            params, SHAPE, SCALE, psf_fwhm_arcsec=PSF, rng=np.random.default_rng(seed)
+        )
+        rows = np.arange(image.shape[0], dtype=float)
+        weights = image.sum(axis=1)
+        offsets.append(float((rows * weights).sum() / weights.sum()) - image.shape[0] / 2)
+    assert min(offsets) < 0 < max(offsets), f"curvature never reversed: {offsets}"
+
+
+def test_width_varies_along_the_feature() -> None:
+    """A constant-width ribbon reads as "extremely clean and linear" to a human eye."""
+    common = {
+        "length_arcsec": 9.0,
+        "clumpiness": 0.0,
+        "curvature_arcsec": 0.0,
+        "position_angle_deg": 90.0,
+        "terminal_knot_fraction": 0.0,
+    }
+    uniform = render(**common, width_jitter=0.0)
+    jittered = render(**common, width_jitter=0.8)
+
+    def width_spread(image: np.ndarray) -> float:
+        lit = image.sum(axis=0) > 0.01 * image.sum(axis=0).max()
+        widths = (image[:, lit] > 0.05 * image[:, lit].max(axis=0)).sum(axis=0)
+        return float(np.std(widths))
+
+    assert width_spread(jittered) > width_spread(uniform)
+
+
+def test_terminal_knot_is_off_by_default() -> None:
+    """It was never constrained by the calibration, and a bright head gave the game away."""
+    assert WakeParameters().terminal_knot_fraction == 0.0
+
+
 def test_terminal_knot_adds_a_bright_end() -> None:
     without = render(length_arcsec=8.0, clumpiness=0.0, terminal_knot_fraction=0.0)
     with_knot = render(length_arcsec=8.0, clumpiness=0.0, terminal_knot_fraction=0.3)

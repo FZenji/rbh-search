@@ -53,8 +53,14 @@ class WakeParameters:
     #: Fitted, and degenerate with the effective PSF - see the class docstring.
     width_arcsec: float = 0.22
     position_angle_deg: float = 148.3
-    #: Maximum deviation of the spine from a straight line, at mid-length.
+    #: Maximum deviation of the spine from a straight line. The sign and the position of the
+    #: bend are randomised per render: an earlier version bowed every wake the same way, and
+    #: a human spotted "a slight curve in the same direction" as a tell in the blind test.
     curvature_arcsec: float = 0.10
+    #: Fractional variation of the transverse width along the feature. Real wakes are lumpy
+    #: in width as well as brightness; a constant-width Gaussian ribbon reads as "extremely
+    #: clean and linear", which is how the blind test was won.
+    width_jitter: float = 0.45
     #: 0 = a smooth ribbon, 1 = flux entirely concentrated into discrete knots.
     clumpiness: float = 0.1
     n_clumps: int = 6
@@ -63,7 +69,14 @@ class WakeParameters:
     #: Brightness of the tail end relative to the tip end, before clumping.
     tail_brightness: float = 0.02
     #: Extra flux in a compact knot at the leading tip, as a fraction of the total.
-    terminal_knot_fraction: float = 0.12
+    #:
+    #: Default **0**, changed from 0.12 after the blind test. None of the four calibration
+    #: statistics is sensitive to this parameter, so the fit never constrained it and it sat
+    #: at a guessed value - which produced a bright compact head that made every synthetic
+    #: read as a "shooting star". The transplant template is the *detected* part of RBH-1 and
+    #: has no such head at either end, so zero is also the value that matches the reference.
+    #: A real wake may well have a terminal knot; ours is not detected as one.
+    terminal_knot_fraction: float = 0.0
     #: Integrated magnitude in the bluer band.
     total_mag_ab: float = 23.6
     #: Colour (blue minus red) at the feature centre.
@@ -135,6 +148,22 @@ def _longitudinal_profile(
     return np.where(inside, profile, 0.0)
 
 
+def _smooth_random_profile(
+    along: NDArray[np.float64],
+    half_length: float,
+    rng: np.random.Generator,
+    n_nodes: int = 7,
+) -> NDArray[np.float64]:
+    """Return a smooth random function of position along the feature, in roughly [-1, 1].
+
+    Built by interpolating random node values rather than summing sinusoids, so it has no
+    periodicity for an eye to latch onto.
+    """
+    nodes = np.linspace(-half_length, half_length, n_nodes)
+    values = rng.uniform(-1.0, 1.0, size=n_nodes)
+    return np.interp(along, nodes, values)
+
+
 def render_wake(
     params: WakeParameters,
     shape: tuple[int, int],
@@ -156,14 +185,27 @@ def render_wake(
 
     along, across = _spine_coordinates(shape, centre, params.position_angle_deg, pixel_scale_arcsec)
 
-    # Bend the spine: a parabolic offset peaking at mid-length.
+    # Bend the spine. The sign and the vertex position are drawn per render: with both fixed,
+    # every synthetic bowed the same way and that was one of the tells in the blind test.
     half = params.length_arcsec / 2.0
     if params.curvature_arcsec != 0.0 and half > 0:
-        bend = params.curvature_arcsec * (1.0 - (along / half) ** 2)
+        sign = 1.0 if rng.random() < 0.5 else -1.0
+        vertex = float(rng.uniform(-0.4, 0.4)) * half
+        span = max(half + abs(vertex), 1e-9)
+        bend = sign * params.curvature_arcsec * (1.0 - ((along - vertex) / span) ** 2)
         across = across - np.where(np.abs(along) <= half, bend, 0.0)
 
+    # Width varies along the feature. A constant-width Gaussian ribbon is what reads as
+    # "extremely clean and linear"; real wakes thicken and thin along their length.
     width_sigma = params.width_arcsec / _FWHM_PER_SIGMA
-    transverse = np.exp(-0.5 * (across / width_sigma) ** 2)
+    if params.width_jitter > 0:
+        wobble = _smooth_random_profile(along, half, rng)
+        local_sigma = width_sigma * (1.0 + params.width_jitter * wobble)
+        local_sigma = np.clip(local_sigma, 0.35 * width_sigma, None)
+    else:
+        local_sigma = np.full_like(along, width_sigma)
+
+    transverse = np.exp(-0.5 * (across / local_sigma) ** 2)
     image = _longitudinal_profile(along, params, rng) * transverse
 
     if params.terminal_knot_fraction > 0:

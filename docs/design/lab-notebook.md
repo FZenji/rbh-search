@@ -29,6 +29,64 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-01 — Phase 2: the blind test failed, 20 out of 20
+
+ADR-0017's blind test was taken. **The result is 20/20 correct, 4.5σ above chance.** The
+synthetic wakes are trivially distinguishable from transplanted real pixels, so the generator
+is not representative and any completeness measured with it is optimistic.
+
+This is the check working exactly as intended, and it is worth being clear how badly the
+statistics had failed to notice. The generator was fitted to reproduce four measured
+statistics of the real object — recovered length, measured width, fragmentation rate, axis
+ratio — and it reproduced all four. It still looked obviously wrong to a person at first
+glance. **Matching four numbers is not the same as looking right**, which is precisely the
+argument ADR-0017 made for building this test rather than trusting the fit.
+
+### The tells, and the code behind each
+
+Reported by the participant, unprompted, in their own terms:
+
+| What they saw | What it was |
+|---|---|
+| "a large head at the start of the wake" — like a shooting star | `terminal_knot_fraction=0.12` put 12% of the flux into a knot a few pixels across at one end. **None of the four calibration statistics is sensitive to it**, so the fit never constrained it and it sat at a guessed value. The transplant is the *detected* part of RBH-1 and has no such head. |
+| "an extremely clean and linear trail" versus real ones "much more irregular, a bit blobby" | The transverse profile was a Gaussian of constant width along the entire length. Real wakes thicken and thin. |
+| "a slight curve in the same direction, along the trail length" | The spine bend was a parabola whose sign was **fixed in code**, so every synthetic bowed the same way. |
+| noticed afterwards: "all of the real ones are in the same direction" | `inject_template` never rotated the template, so every transplant carried RBH-1's own position angle of 148.3° while synthetics got a random one. A systematic difference between the classes unrelated to the question being asked. |
+
+The first three are generator defects. The fourth is a defect in the *test*, and the
+participant reported it did not affect their answers — but it had to be fixed regardless.
+
+### What it costs
+
+- **The transplant-based numbers stand.** They are real pixels; nothing about this touches
+  them. The headline 50% completeness limit of 24.61 was measured with the transplant.
+- **The parametric numbers are optimistic**, and the existing grid already showed by how
+  much: at magnitude 24.8 the transplant gave 27% against 30–46% for the generator. The
+  50% limits agreed to 0.14 mag, so the divergence is in the faint tail rather than at the
+  half-power point.
+- **The whole length grid rests on the generator** and must be re-measured after
+  recalibration. It is the one result with no transplant anchor, because a fixed set of real
+  pixels cannot be stretched to another length without resampling away its knots.
+
+### Fixes made
+
+`terminal_knot_fraction` defaults to 0; curvature sign and vertex position are drawn per
+render; transverse width varies along the feature via a smooth random profile
+(`width_jitter`, default 0.45); and the blind test now applies a random quadrant rotation and
+reflection to the transplant. Quadrant only — an arbitrary angle would resample and smooth
+the knots, which is the bias ADR-0017 exists to avoid — so eight orientations rather than
+uniform coverage, and that limitation is real.
+
+### The general lesson
+
+**An unconstrained parameter left at a guessed value is invisible to a fit and obvious to a
+human.** The terminal knot was never measured by anything, so the calibration was free to
+leave it wrong, and it turned out to be the loudest signal in the image. Worth checking, for
+any fitted model: which parameters does the objective actually constrain, and what is
+carrying the rest?
+
+---
+
 ## 2026-07-30 — Phase 2: the long-feature collapse was my own harness
 
 The first length grid showed completeness collapsing for long features — 8% at 16″ and

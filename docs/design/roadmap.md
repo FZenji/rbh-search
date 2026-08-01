@@ -143,12 +143,13 @@ The completeness grid above is one slice, not a selection function. Still to do:
   demands, so not yet representative. Needs Phase 3 area.
 - **Cross-visit artifact control**, which is the test the rotation control cannot be. Needs
   multi-visit coverage, so it is really Phase 3.
-- **Blind human discrimination** (step 6). The set is generated and awaiting a result:
-  `uv run rbh blind-test` produces 20 stamps, half transplanted real RBH-1 pixels and half
-  calibrated synthetics, matched in sky, brightness and display stretch, plus a separate
-  answer key. Near 50% accuracy is the outcome that validates the generator; well above 50%
-  means a human can see something the four calibration statistics missed. Result to be
-  recorded in the [lab notebook](lab-notebook.md) once taken.
+- **Blind human discrimination** — run, and **failed**: 20/20 correct, 4.5σ above chance. The
+  generator reproduced all four statistics it was fitted to and was still obvious at a
+  glance. Three generator defects and one flaw in the test are fixed; recalibration and a
+  second round are outstanding. The transplant-based numbers are unaffected; the parametric
+  ones are optimistic, and the length grid — which has no transplant anchor — must be
+  re-measured. See the [lab notebook](lab-notebook.md) and the
+  [ADR-0017 amendment](../adr/0017-synthetic-realism.md).
 - **Crowded positions.** Injections currently avoid bright sources, so this is completeness
   for uncrowded sky and that restriction is part of the selection function.
 - **More sites.** 44 gives ±7.5% per point, and background realisations are reused across

@@ -184,6 +184,36 @@ the PSF. An effective drizzled PSF near 0.2 arcsec would reconcile the two exact
 consequence: the generator is calibrated for **detectability**, and its width parameter is
 not a physical claim about wake widths. Separating the two needs a field with a star in it.
 
+## Amendment, 2026-08-01 (the blind test failed)
+
+The blind discrimination check listed above as one of the "two cheap checks that catch what
+statistics miss" was run. **A participant scored 20 out of 20, 4.5 sigma above chance.** The
+synthetic wakes were trivially distinguishable from transplanted real pixels.
+
+The generator had been fitted to reproduce four measured statistics of the real object and
+did reproduce all four. It still looked obviously wrong at a glance. The prediction in this
+ADR - that a person "uses everything at once, including whatever we forgot to measure" - held
+exactly, and the cheap check earned its place.
+
+Three generator defects and one flaw in the test itself were identified from the
+participant's description, each traceable to a specific line: a terminal knot bright enough
+to read as a "shooting star" head, a constant-width ribbon where real wakes are irregular, a
+spine bend whose sign was fixed in code so every wake bowed the same way, and transplants
+that were never rotated and so all carried RBH-1's own position angle. All four are fixed;
+details in the lab notebook.
+
+**Consequences for the measurements.** The transplant-based numbers are untouched - they are
+real pixels, which is the entire reason this ADR made them the reference standard. The
+parametric numbers are optimistic, by an amount the existing grid already bounds: 27% against
+30-46% at magnitude 24.8, with the 50% limits still agreeing to 0.14 mag. The length grid has
+no transplant anchor and must be re-measured after recalibration.
+
+**The lesson worth carrying beyond this project.** An unconstrained parameter left at a
+guessed value is invisible to a fit and obvious to a human. The terminal knot was not
+measured by any of the four statistics, so the calibration was free to leave it wrong, and it
+turned out to be the loudest signal in the image. For any fitted model: ask which parameters
+the objective actually constrains, and what is carrying the rest.
+
 ## Consequences
 
 - Phase 2 gains a transplant machinery step before the parametric generator, so the

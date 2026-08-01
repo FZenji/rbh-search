@@ -28,6 +28,7 @@ import numpy as np
 
 from rbh.inject import free_positions, inject_synthetic, inject_template
 from rbh.synthetic import WakeParameters
+from rbh.template import transform_template
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -101,9 +102,19 @@ def make_blind_set(
 
         if kind == TRANSPLANT:
             scale = 10.0 ** (-0.4 * (magnitude - reference.total_mag_ab))
-            injected, _ = inject_template(
-                tile, reference.template, centre, flux_scale=scale, rng=rng
+            # Vary the orientation. The template is a fixed set of pixels, so without this
+            # every transplant carries RBH-1's own position angle while the synthetics get a
+            # random one - a systematic difference between the classes that has nothing to do
+            # with what the test is asking. Spotted by a participant after the first round.
+            # Quadrant rotations and reflection only: an arbitrary angle would resample and
+            # smooth the knots, which is the bias ADR-0017 exists to avoid. Eight orientations
+            # is not uniform coverage, and that limitation is real.
+            oriented = transform_template(
+                reference.template,
+                quadrant_rotations=int(rng.integers(0, 4)),
+                mirror=bool(rng.integers(0, 2)),
             )
+            injected, _ = inject_template(tile, oriented, centre, flux_scale=scale, rng=rng)
         else:
             local = WakeParameters(
                 **{
