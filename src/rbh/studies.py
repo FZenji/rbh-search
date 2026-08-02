@@ -258,6 +258,7 @@ def _statistics(trials: Sequence[Trial]) -> dict[str, float]:
         "median_length_arcsec": summary.median_length_arcsec,
         "median_width_arcsec": summary.median_width_arcsec,
         "median_width_variation": summary.median_width_variation,
+        "median_straightness_arcsec": summary.median_straightness_arcsec,
         "median_axis_ratio": summary.median_axis_ratio,
     }
 
@@ -269,11 +270,27 @@ def _statistics(trials: Sequence[Trial]) -> dict[str, float]:
 #: Its tolerance is the widest in relative terms because it is measured from four segments
 #: per feature and is correspondingly noisy; the point is to stop the generator sitting at
 #: a value nothing constrains, not to pin it to three decimal places.
+#: ``median_straightness_arcsec`` was added after round 2, where a participant reported the
+#: synthetics had "no jumps or lumps, or changes in direction mid trail". The quantity was
+#: already measured by :mod:`rbh.morphology` and reported everywhere - it simply had never
+#: been part of what the fit was asked to match, so the generator was free to be as smooth
+#: as it liked. That is the third distinct instance of the same failure, and the reason the
+#: rule is now: *anything a person could use has to be in this dictionary*.
+#: ``completeness`` was added last, and it should have been first: it is the quantity the
+#: whole project exists to report. It was left out on the assumption that it is saturated at
+#: the calibration magnitude and so carries no information - the transplant does sit at
+#: 1.00 there. **That assumption was never checked, and it is wrong.** Across one grid the
+#: synthetics ranged from 0.60 to 0.95 at the same magnitude, falling monotonically as the
+#: brightness ramp steepened. Completeness was the single most discriminating statistic
+#: available and it was the one excluded, which is the most likely explanation for the
+#: generator reading 0.29 mag pessimistic against the transplant.
 CALIBRATION_TOLERANCES = {
     "median_length_arcsec": 0.40,
     "median_width_arcsec": 0.025,
     "median_width_variation": 0.05,
+    "median_straightness_arcsec": 0.02,
     "fragmentation": 0.15,
+    "completeness": 0.05,
 }
 
 
@@ -336,14 +353,32 @@ def calibrate_generator(
     #: had created - a self-inflicted version of exactly what :func:`_pinned_parameters`
     #: exists to catch. Trials now run across cores, so breadth is cheap and there is no
     #: excuse for trading it away.
-    tail_values: Sequence[float] = (0.02, 0.10, 0.22, 0.40),
+    #: Extended to 1.0 - a feature of uniform brightness end to end - after round 2 of the
+    #: blind test. A participant described RBH-1's brightness as barely changing along its
+    #: length while the synthetics visibly faded, and the fitted value was 0.10, a tenfold
+    #: ramp. The grid had stopped at 0.40, so **the answer being described was never in the
+    #: search space**. Nothing flagged it: the pinning check cannot fire on 0.10 when 0.02
+    #: is also scanned, because that is an interior point of a range that was simply in the
+    #: wrong place.
+    tail_values: Sequence[float] = (0.02, 0.05, 0.10, 0.22, 0.40, 0.60),
     clumpiness_values: Sequence[float] = (0.0, 0.2, 0.4),
-    width_values: Sequence[float] = (0.16, 0.22, 0.28, 0.34),
+    #: **Do not trim these ranges using minima measured under a different objective.** That
+    #: was done once, on the reasoning that a sharp interior minimum makes the outer points
+    #: redundant - costs of 3.28, 1.53, 1.91, 5.43 across this axis, so why keep the ends.
+    #: Then ``completeness`` was added to the objective and all three trimmed axes pinned at
+    #: once, every one of them against a bound that had just been removed. A cost surface is
+    #: a property of the objective, not of the model, so **changing the objective voids every
+    #: measurement used to justify narrowing a grid.** The pinning check caught it, which is
+    #: the third time it has paid for itself, but it should not have had to.
+    width_values: Sequence[float] = (0.16, 0.19, 0.22, 0.25),
+    #: Multi-node spine deviation, giving direction changes partway along rather than a
+    #: single smooth bow. Fitted against the straightness residual.
+    path_wander_values: Sequence[float] = (0.05, 0.10, 0.14),
     #: Added as a fitted axis rather than a constant after the second blind-test
     #: pre-flight: set by eye it was the strongest remaining discriminator between real
     #: and synthetic stamps. Interpreted as a log-width scatter, so 0.6 means the width
     #: swings by a factor of e**0.6, roughly 1.8, either way along the feature.
-    width_jitter_values: Sequence[float] = (0.15, 0.3, 0.45, 0.6, 0.8, 1.0, 1.3),
+    width_jitter_values: Sequence[float] = (0.3, 0.45, 0.6, 0.8, 1.0),
     psf_fwhm_arcsec: float = DEFAULT_PSF_FWHM_ARCSEC,
     length_arcsec: float = DEFAULT_LENGTH_ARCSEC,
     window: SelectionWindow | None = None,
@@ -363,13 +398,14 @@ def calibrate_generator(
 
     scanned: list[dict[str, float]] = []
     best: tuple[float, WakeParameters, dict[str, float]] | None = None
-    for tail, clumpiness, width, jitter in itertools.product(
-        tail_values, clumpiness_values, width_values, width_jitter_values
+    for tail, clumpiness, width, jitter, wander in itertools.product(
+        tail_values, clumpiness_values, width_values, width_jitter_values, path_wander_values
     ):
         params = WakeParameters(
             length_arcsec=length_arcsec,
             width_arcsec=width,
             width_jitter=jitter,
+            path_wander_arcsec=wander,
             clumpiness=clumpiness,
             tail_brightness=tail,
             total_mag_ab=reference.total_mag_ab,
@@ -390,6 +426,7 @@ def calibrate_generator(
                 "clumpiness": clumpiness,
                 "width_arcsec": width,
                 "width_jitter": jitter,
+                "path_wander_arcsec": wander,
                 "cost": cost,
                 **got,
             }
@@ -415,6 +452,7 @@ def calibrate_generator(
                 "clumpiness": clumpiness_values,
                 "width_arcsec": width_values,
                 "width_jitter": width_jitter_values,
+                "path_wander_arcsec": path_wander_values,
             },
         ),
     )

@@ -177,6 +177,7 @@ def test_summary_arithmetic() -> None:
         median_length_arcsec=5.0,
         median_width_arcsec=0.25,
         median_width_variation=0.18,
+        median_straightness_arcsec=0.035,
         median_axis_ratio=20.0,
     )
     assert summary.detection_rate == pytest.approx(0.8)

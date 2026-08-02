@@ -62,6 +62,15 @@ class WakeParameters:
     #: bend are randomised per render: an earlier version bowed every wake the same way, and
     #: a human spotted "a slight curve in the same direction" as a tell in the blind test.
     curvature_arcsec: float = 0.10
+    #: Random deviation of the spine from a straight line, drawn over several nodes along
+    #: the length so the path can **change direction mid-trail** rather than bowing once.
+    #: ``curvature_arcsec`` is a single parabola: smooth, one sign, one vertex, and a
+    #: participant who had already seen the real object described the synthetics as having
+    #: "no jumps or lumps, or changes in direction mid trail, like the RBH-1 has". A single
+    #: bow cannot produce that however its sign and vertex are randomised. The node profile
+    #: is piecewise linear, so the direction genuinely changes at each node.
+    #: Constrained by the straightness residual in the calibration objective, not guessed.
+    path_wander_arcsec: float = 0.0
     #: Fractional variation of the transverse width along the feature. Real wakes are lumpy
     #: in width as well as brightness; a constant-width Gaussian ribbon reads as "extremely
     #: clean and linear", which is how the blind test was won.
@@ -212,6 +221,13 @@ def render_wake(
         span = max(half + abs(vertex), 1e-9)
         bend = sign * params.curvature_arcsec * (1.0 - ((along - vertex) / span) ** 2)
         across = across - np.where(np.abs(along) <= half, bend, 0.0)
+
+    # Wander the spine over several nodes, on top of the single bend. The bend is one
+    # smooth bow; this is what lets the path change direction partway along, which is what
+    # a participant reported the synthetics could not do.
+    if params.path_wander_arcsec > 0.0 and half > 0:
+        wander = params.path_wander_arcsec * _smooth_random_profile(along, half, rng)
+        across = across - np.where(np.abs(along) <= half, wander, 0.0)
 
     # Width varies along the feature. A constant-width Gaussian ribbon is what reads as
     # "extremely clean and linear"; real wakes thicken and thin along their length.

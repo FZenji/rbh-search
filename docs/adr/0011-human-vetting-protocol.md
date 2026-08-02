@@ -59,6 +59,38 @@ Human vetting is treated as a pipeline stage with its own measured completeness 
 - The randomised, score-hidden presentation makes vetting slower and less satisfying than
   a ranked list would be. That is the point.
 
+## Amendment, 2026-08-02 (vetters learn the injections, and this protocol must plan for it)
+
+Found in Phase 2, in a place that looks unrelated: ADR-0017's blind discrimination test uses
+transplanted pixels from RBH-1 as its "real" class, and after two rounds the participant
+reported *"now I know what the actual trail of RBH-1 looks like, I will probably always be
+able to distinguish it"* — scoring 20/20 twice while every measured statistic said the two
+classes were identical.
+
+**This protocol has the same structure and will hit the same wall.** Injected positives are
+mixed into the queue to measure vetter sensitivity, which works only while the vetter cannot
+tell an injection from a candidate. They are drawn from one generator, calibrated to one
+object. A vetter working a ~10³-stamp queue will see hundreds, and the recall figure will
+then measure *recognition of our injections* rather than sensitivity to wakes — drifting
+upward, looking like an improving vetter.
+
+It has to be designed for rather than discovered late:
+
+- **Vary what is injected.** Sample across the completeness grid's full parameter range, not
+  at the calibrated point, so there is no single look to learn. This also samples the
+  selection function where it is actually uncertain, so it costs nothing.
+- **Include transplants as well as parametric injections**, in proportion, so the injected
+  class is not homogeneous.
+- **Log recall against vetting order.** If sensitivity to injections climbs through the
+  queue while it stays flat for real candidates, that is the effect appearing, and it is
+  only detectable if the order is recorded. Cheap to add now, impossible to reconstruct
+  later.
+- **Treat a vetter's later sessions as weaker evidence** about sensitivity, in the same way
+  ADR-0017 now treats a repeat participant's accuracy.
+
+No change to the categories or the logging schema, which already record what is needed —
+except that **vetting order must be part of the record**.
+
 ## Alternatives considered
 
 - **Unstructured visual inspection.** What most searches do. Rejected: unmeasurable and

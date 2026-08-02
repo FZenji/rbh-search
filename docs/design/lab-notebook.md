@@ -29,7 +29,163 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
-## 2026-08-01 — I spent six rounds tuning against noise
+## 2026-08-03 — The most discriminating statistic was the one not being fitted
+
+Refitting with the two round-2 tells addressed dropped the cost from 1.40 to **0.88**, and
+fragmentation went from 95% to **86%, exactly the transplant's**. `tail_brightness` moved
+0.10 → 0.40, in the direction the debrief predicted. `path_wander_arcsec` came out at 0.10, a
+clean interior optimum, with the straightness residual tracking it monotonically — 0.021,
+0.026, 0.034, 0.048 against a target of 0.037 — so the new parameter is genuinely
+constrained by the new statistic rather than floating.
+
+Then the marginals showed this, at RBH-1's own magnitude:
+
+| | completeness |
+|---|---|
+| transplant | **1.00** |
+| best-fit synthetic | **0.74** |
+
+and, along the `tail_brightness` axis: 0.95, 0.90, 0.81, 0.74, 0.71, 0.64, 0.60.
+
+**Completeness varies by 35 percentage points across the grid at the calibration magnitude,
+and it was not in the objective.** The fit was free to trade it away for a slightly better
+morphology match, and did.
+
+### The correction
+
+Two days ago this notebook explained the generator's 0.29 mag pessimism by saying the
+objective is "evaluated where the answer cannot move" — that completeness saturates at the
+calibration magnitude and therefore carries no information. **That was wrong.** It saturates
+for the *transplant*, which is the number I looked at; the synthetics span 0.60–0.95. The
+mechanism was plausible, it explained the observation, and it was never checked against the
+one number that would have falsified it. It then sat in the notebook for two days looking
+like a finding.
+
+The real explanation is duller and worse: **the single most discriminating statistic
+available was the one excluded from the fit**, and it is the quantity the entire project
+exists to report. `completeness` is now in `CALIBRATION_TOLERANCES` at 0.05.
+
+The general form, which is the third variant of the same lesson: a statistic being *absent*
+from an objective is invisible, and asking "which parameters does this objective constrain?"
+is not enough. The other half is **"which measured quantities is it ignoring, and how much
+do they vary?"** Cheap to answer — the numbers were already in every scan file.
+
+### Adding it voided every grid decision made before it
+
+Refitting with `completeness` in the objective **inverted the cost surface**. Along
+`tail_brightness`, the previous scan ranked 0.40 best and 0.02 worst; the new one ranks 0.10
+best and everything above it monotonically worse — 2.93, 4.91, 5.65, 6.63, 7.61, 6.85.
+
+**Three axes pinned simultaneously** — `tail_brightness`, `width_arcsec`, `width_jitter` —
+and every one of them at the bottom of a range trimmed two hours earlier. The trimming had
+been argued for explicitly: each axis had a sharp interior minimum with steep sides, so the
+outer points looked redundant, and the reasoning was even written into the docstring as
+*measurement-justified rather than clock-justified*. It was still wrong.
+
+**A cost surface is a property of the objective, not of the model.** Change the objective and
+every measurement used to justify narrowing a grid is void. Two hours of scan results became
+worthless the moment a term was added, and the argument for trimming looked exactly as sound
+after that as before — nothing about it flagged its own expiry.
+
+Third time the pinning check has caught something it should not have needed to.
+
+### A tension worth watching
+
+The two fits bracket a problem the model may not be able to solve:
+
+| | fragmentation | completeness |
+|---|---|---|
+| transplant (target) | 86% | 100% |
+| fit without `completeness` in the objective | **86%** | 74% |
+| fit with it | 95% | **90%** |
+
+The generator can match one or the other, not both. The real object **fragments most of the
+time and still passes the selection window every time** — its pieces are bright enough to be
+relinked. Ours either fragment as often and lose the faint ones, or stay intact and fragment
+too rarely. That is a statement about the model's structure rather than its parameters, and
+if the refit on restored grids cannot close it, it should be reported as a limitation rather
+than tuned away.
+
+---
+
+## 2026-08-02 — Round 2: 20/20 again, and the test has a shelf life
+
+Round 2 of ADR-0017's blind test: **20/20 again, 4.5σ**, but reported as "MUCH harder".
+Every number the project has says the classes are identical — five fitted statistics
+matched, and a 200-stamp pre-flight scoring head contrast, width variation and flux
+variation at 0.44, 0.47 and 0.46. A human still separates them perfectly.
+
+### The finding that limits the method
+
+> *"Now I know what the actual trail of RBH-1 looks like, I will probably always be able to
+> distinguish it."*
+
+**There is only one real object.** Every "real" stamp is the same set of pixels from RBH-1,
+rotated by a quadrant, mirrored, and rescaled in flux. After two rounds a participant has
+seen it around forty times. The task has quietly stopped being *"is this real or
+synthetic?"* and become *"is this the object I have already memorised?"* — and the second
+question can be answered perfectly by someone who would fail the first.
+
+This is not a bug to fix. It is a **property of having one example**, and it means:
+
+- **A repeat participant's score is not evidence about the generator** once they have seen
+  the template. Their *debrief* still is — a named cue can be checked against the code —
+  but the accuracy figure has been spent.
+- **The 20/20 does not distinguish** "the synthetics are unrealistic" from "the participant
+  recognises one specific object". Both predict the same score.
+- The honest reading of round 2 is therefore: *the debrief is data, the score is not.*
+
+What can be done about it, in rough order of cost:
+
+1. **A fresh participant per round.** Cleanest, and the only one that fully restores the
+   test. Expensive on a solo project, and there are only so many naive people available —
+   each can be used once.
+2. **Widen the real class beyond RBH-1** using other real thin structures — edge-on discs,
+   tidal tails, satellite trails. They are not wakes, so the test becomes "does this look
+   like a real astronomical object" rather than "does this look like a real wake". Weaker,
+   but not memorisable and available in quantity.
+3. **Score the debrief, not the accuracy.** What is actually being extracted is a named,
+   checkable cue; the number was only ever a way of deciding whether to ask for one.
+
+This belongs in ADR-0017 as a stated limitation, because Phase 5's blind vetting has the
+same structure and will hit it harder: vetters who see injected positives repeatedly learn
+what the injections look like.
+
+### The two tells, and where each one lives
+
+> *"All the synthetic trails still had that linear pattern. No jumps or lumps, or changes in
+> direction mid trail, like the RBH-1 has."*
+
+The spine is a **single parabola**. `curvature_arcsec` bends it once, and after round 1 the
+sign and vertex were randomised — but a bow is still a bow, and no amount of randomising
+*which way* it bows produces a direction change partway along. Added `path_wander_arcsec`,
+a deviation drawn over seven nodes and interpolated piecewise-linearly, so the direction
+genuinely changes at each node.
+
+Per the rule from yesterday, it needs a statistic or it is another guessed parameter:
+`straightness_arcsec` was **already measured** by `rbh.morphology`, already reported in the
+litmus table, and had simply never been part of what the fit was asked to match. Now in
+`CALIBRATION_TOLERANCES`. That is the **third** distinct instance of the same failure —
+a parameter nothing constrained, a parameter the search could not reach, and now a
+statistic that existed but was not in the objective.
+
+> *"The brightness along the entire trail... in RBH-1 it seems to barely change, not the
+> case in our synthetics."*
+
+`tail_brightness` was fitted to **0.10** — the tail end at a tenth of the tip's brightness,
+a tenfold ramp. The description is of something nearly uniform, i.e. a value near 1.0.
+
+**The grid was `(0.02, 0.10, 0.22, 0.40)`. It stopped at 0.40.** The value being described
+was never in the search space, and nothing flagged it: the pinning check cannot fire on
+0.10 when 0.02 is also scanned, because 0.10 is an *interior* point — of a range that was
+in the wrong place. A pinned fit is a range too narrow; this is a range correctly shaped and
+wrongly positioned, and only a human looking at the picture found it. Extended to 1.00.
+
+Worth noting the mechanism this may also fix: our synthetics fragment at 95% against the
+transplant's 86%, and `clumpiness` fits to 0.0 because more clumping means more
+fragmentation. A uniformly bright trail fragments less from faintness, which frees budget
+for genuine knots — the lumps that were reported missing. If so, one wrong parameter was
+suppressing two separate tells.
 
 The most important entry here, because the error was in the method rather than in a number.
 
@@ -106,13 +262,22 @@ generator has moved from **0.14 mag optimistic to 0.41 mag pessimistic**: synthe
 *harder* to detect than the real object. Wider features at fixed total flux have lower
 surface brightness, and `width_arcsec` went 0.22 → 0.28.
 
-**Why the calibration did not catch it.** The three fitted statistics are measured at RBH-1's
-own brightness, 23.77, where completeness is saturated at 100% for every configuration. The
-objective therefore constrains morphology in a regime where the deliverable is constant, and
-says nothing about the faint end where the deliverable actually varies. This is the same
-structural failure as the terminal knot, in a third guise: not a parameter no statistic
-constrains, nor one the search cannot reach, but **an objective evaluated where the answer
-cannot move**.
+**Why the calibration did not catch it.** ~~The three fitted statistics are measured at
+RBH-1's own brightness, 23.77, where completeness is saturated at 100% for every
+configuration, so the objective constrains morphology in a regime where the deliverable is
+constant.~~
+
+**That explanation was wrong, and it is corrected below (2026-08-03).** Completeness is
+saturated at the calibration magnitude for the *transplant*, which is where the claim came
+from — but across a later grid the *synthetics* ranged from 0.60 to 0.95 at that same
+magnitude, falling monotonically as the brightness ramp steepened. Completeness was strongly
+informative all along; it was simply not in the objective. The real answer is the plain one:
+**the most discriminating statistic available was the one left out**, and it happens to be
+the quantity the project exists to report.
+
+Recorded rather than deleted because the failure mode is worth keeping: a plausible
+mechanism was asserted as the explanation without checking the number that would have
+falsified it, and it then sat in the notebook for two days looking like a finding.
 
 Note which way this cuts. A pessimistic generator makes the published limits conservative
 rather than overstated, so it is the safer of the two errors — but "safe" is not "measured",

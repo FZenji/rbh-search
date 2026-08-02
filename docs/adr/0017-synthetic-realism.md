@@ -314,6 +314,56 @@ because its noise reads as signal. Three of the six rounds did find genuine defe
 stand because each was confirmed by something other than the AUC, and they are recorded in
 the lab notebook alongside the ones that were not.
 
+## Amendment, 2026-08-02 (round 2, and a limit on what this check can ever measure)
+
+**20/20 again, 4.5σ**, reported as much harder. Five fitted statistics matched and a
+200-stamp pre-flight found nothing above chance; a human still separated them perfectly.
+
+### The blind test has a shelf life, and this ADR must say so
+
+There is **one real object**. Every "real" stamp is the same pixels from RBH-1, quadrant
+rotated, mirrored and flux-scaled. After two rounds a participant has seen it around forty
+times, and the task has stopped being *"real or synthetic?"* and become *"is this the object
+I have memorised?"* — a question someone can answer perfectly while failing the first.
+
+Consequently, **a repeat participant's accuracy is not evidence about the generator.** The
+debrief still is: a named cue can be checked against the code, and both of round 2's tells
+did land on specific lines. But the score cannot separate "the synthetics are unrealistic"
+from "the participant recognises one specific object", because both predict 20/20.
+
+This is a property of having a single example, not a defect to be fixed, and it is a
+**standing limitation of Tier 3 as specified here**. Options, in order of cost: a fresh
+participant per round, which fully restores the test but consumes a naive person each time;
+widening the real class with other real thin structures (edge-on discs, tidal tails,
+trails), which is not memorisable and is available in quantity but weakens the question to
+"does this look like a real object" rather than "like a real wake"; or treating the named
+cue as the deliverable and the accuracy as merely the trigger for asking.
+
+**This propagates to Phase 5.** [ADR-0011](0011-human-vetting-protocol.md)'s blind vetting
+mixes injected positives into the queue, and a vetter who sees them repeatedly will learn
+what the injections look like exactly as happened here. That erodes the injected-positive rate as a
+measure of vetter sensitivity, and the mitigation has to be designed in rather than
+discovered late: vary what is injected, or rotate vetters, or both.
+
+### The two tells
+
+*"No jumps or lumps, or changes in direction mid trail."* The spine was a **single
+parabola**; randomising its sign and vertex after round 1 varied *which way* it bowed but
+could never produce a direction change partway along. Added `path_wander_arcsec`, drawn over
+seven nodes and interpolated piecewise-linearly.
+
+Per this ADR's own rule it needs a constraining statistic, and `straightness_arcsec` was
+**already measured and reported** — it had simply never been in the objective. That is the
+third distinct form of the same failure: a parameter no statistic constrained, a parameter
+the search could not reach, and now a statistic that existed but was not being fitted.
+
+*"In RBH-1 the brightness barely changes; not the case in our synthetics."* `tail_brightness`
+fitted to 0.10, a tenfold ramp. The grid was `(0.02, 0.10, 0.22, 0.40)` — **the near-uniform
+value being described was never in the search space.** The pinning check cannot catch this:
+0.10 is an interior point, of a range positioned wrongly rather than sized wrongly. A pinned
+fit means the range is too narrow; this is a new failure mode, and only a person looking at
+the image found it. Extended to 1.00.
+
 ## Consequences
 
 - Phase 2 gains a transplant machinery step before the parametric generator, so the

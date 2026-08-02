@@ -64,6 +64,7 @@ class Summary:
     median_length_arcsec: float
     median_width_arcsec: float
     median_width_variation: float
+    median_straightness_arcsec: float
     median_axis_ratio: float
     label: str = ""
 
@@ -220,6 +221,7 @@ def summarise(trials: Sequence[Trial], label: str = "") -> Summary:
         # nanmedian, not median: a trial too faint for three measurable segments reports
         # NaN, and one such trial would otherwise poison the whole summary.
         median_width_variation=_nanmedian([m.width_variation for m in measured]),
+        median_straightness_arcsec=_nanmedian([m.straightness_arcsec for m in measured]),
         median_axis_ratio=float(np.median([m.axis_ratio for m in measured]))
         if measured
         else float("nan"),
