@@ -29,6 +29,39 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-03 — Recording confidence, because "20/20" threw away most of the data
+
+Yesterday's entry concluded that a repeat participant's score is spent — memorisation and an
+unrealistic generator both predict 20/20, so the number cannot separate them. The participant
+pushed back: *"I think my score can still inform the generator... there were numerous stamps
+last time which I found very hard to differentiate."*
+
+They were right, and the error is worth naming precisely. The argument is sound about the
+**aggregate**, and wrong about the **experiment**. Difficulty was not uniform across stamps,
+and that variation is exactly what distinguishes the two explanations — recognition of a
+memorised object should feel uniformly easy. I had collected one number and thrown away the
+twenty judgements that produced it.
+
+Round 3 records **confidence per stamp** on a four-point scale:
+
+| what it looks like | what it means |
+|---|---|
+| confident **and** correct | a real cue; compare those stamps against the uncertain ones to localise it |
+| uncertain | the generator already works here — a positive result, previously invisible |
+| uniformly high confidence | the signature of memorisation, now *detectable* rather than assumed |
+| accurate but unconfident | the cue is below the level it can be described at; go looking statistically |
+
+The general lesson: **an aggregate is a lossy summary of an experiment, and the loss is
+usually the interesting part.** A score of 20/20 and a score of 20/20 with half the stamps
+marked "guess" are completely different results, and only one of them says the generator is
+in trouble. This is the same shape of mistake as reporting detection and completeness
+together, which Phase 2 already learned once and clearly did not generalise.
+
+Round 3 generated with the new profile shape; pre-flight over 200 stamps clean at 0.47, 0.53,
+0.48.
+
+---
+
 ## 2026-08-03 — The brightness model was the wrong shape, and nobody had ever looked
 
 The fit had driven `tail_brightness` to 0.02 — a trail fading to 2% at one end — in direct

@@ -345,6 +345,36 @@ what the injections look like exactly as happened here. That erodes the injected
 measure of vetter sensitivity, and the mitigation has to be designed in rather than
 discovered late: vary what is injected, or rotate vetters, or both.
 
+### Correction: the score is not as spent as this amendment claimed
+
+The paragraph above concluded that a repeat participant's accuracy is no longer evidence
+about the generator. **That is too strong**, and the participant said so: *"I think my score
+can still inform the generator... there were numerous stamps last time which I found very
+hard to differentiate."*
+
+The argument holds for the *aggregate* number — memorisation and an unrealistic generator
+both predict 20/20 — but it discards the fact that difficulty was **not uniform across
+stamps**. Recognising a memorised template predicts uniformly easy; genuine visual
+discrimination predicts variation. Round 2 had both a perfect score and stamps the
+participant found hard, which the aggregate cannot represent.
+
+**Round 3 therefore records confidence per stamp**, on a four-point scale, alongside each
+call. This is a better instrument than either the old test or a swapped-out real class:
+
+- **Confident and correct** localises a tell. Those stamps can be compared against the
+  uncertain ones to find what differs, which one number never could.
+- **Uncertain** marks where the generator already works — a positive result, previously
+  invisible.
+- **Uniformly high confidence** is the signature of memorisation, so the failure mode this
+  amendment worried about becomes *detectable* rather than merely feared.
+- Accuracy staying high while confidence stays low would say the cue is below the level the
+  participant can name, which changes the search from "ask for a description" to "look
+  statistically".
+
+Each round now yields twenty labelled points instead of one. The "widen the real class"
+option remains available and is still the only thing that fully removes the memorisation
+confound, but it weakens the question being asked, and it is no longer the first resort.
+
 ### The two tells
 
 *"No jumps or lumps, or changes in direction mid trail."* The spine was a **single
