@@ -9,10 +9,14 @@ kind of luck that should not be relied on twice.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from rbh.studies import _pinned_parameters
 from rbh.synthetic import WakeParameters
 
-GRIDS = {
+# Annotated rather than inferred: a bare literal infers dict[str, tuple[float, ...]], and
+# dict is invariant in its value type, so it does not satisfy dict[str, Sequence[float]].
+GRIDS: dict[str, Sequence[float]] = {
     "tail_brightness": (0.02, 0.10, 0.22, 0.40),
     "clumpiness": (0.0, 0.2, 0.4, 0.6),
     "width_arcsec": (0.10, 0.16, 0.22, 0.28),

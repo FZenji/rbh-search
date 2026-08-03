@@ -82,6 +82,19 @@ Also corrected: `mean_surface_brightness` was spreading the flux over the whole 
 length, which stopped being right the moment `bright_fraction` existed. Every figure it
 produced was 0.36 mag too faint.
 
+### Gotcha: `mypy src/rbh` is not the gate, `mypy` is
+
+CI went red on a commit whose gates had all passed locally. The cause was running
+`uv run mypy src/rbh` — 24 files — where CI runs bare `uv run mypy`, which picks up the
+project config and checks **47**, tests included. The failure was in a test file:
+`dict[str, tuple[float, ...]]` inferred from a literal does not satisfy
+`dict[str, Sequence[float]]`, because `dict` is invariant in its value type.
+
+The lesson is not about variance. **A local gate that is narrower than CI is not a gate**,
+and the discipline is to run the exact commands from `CLAUDE.md` — `ruff check .`,
+`ruff format --check .`, `mypy`, `pytest -m "not network"` — with no arguments bolted on to
+make them faster.
+
 ---
 
 ## 2026-08-03 — Round 3: discriminability down 2.5x, and confidence carries no information
