@@ -345,6 +345,31 @@ what the injections look like exactly as happened here. That erodes the injected
 measure of vetter sensitivity, and the mitigation has to be designed in rather than
 discovered late: vary what is injected, or rotate vetters, or both.
 
+## Amendment, 2026-08-03 (round 3: d' 3.38 to 1.33, and the residual is not a nameable cue)
+
+**15/20, +2.2σ, p = 0.021**, against 20/20 and +4.5σ. The participant was biased toward
+"synthetic" (13 calls against 7), so the bias-free measure is the one to read: **d′ fell from
+3.38 to 1.33**, a factor of 2.5. Four of ten real stamps were called synthetic, against none
+in round 2 — real pixels now routinely pass for the generator.
+
+Confidence, recorded for the first time, did not track correctness: 67%, 89%, 62% across
+guess / leaning / fairly sure, and **no stamp felt certain**. That is diagnostic. If a single
+nameable tell remained, feeling sure would mean being right; it does not, so **the residual
+discriminability is diffuse rather than a specific defect**. Rounds 1 and 2 each yielded a
+tell that traced to a line of code. This round does not, and asking for one would be asking
+for something the data says is not there.
+
+**The gate is not met and should not be recorded as met.** This ADR asks for accuracy near
+50%; 75% is not 50%, and p = 0.021 is a real if weak signal. What has changed is that it is
+no longer the binding constraint: the transplant remains the reference standard and the
+number to quote, and the generator now agrees with it on the 50% completeness limit to 0.16
+mag — inside the binomial noise on 42 sites. The parametric numbers were never intended to
+stand alone, and their disagreement with real pixels is now smaller than the uncertainty on
+either of them.
+
+Resolving the residual needs a different instrument, not another round of the same one: at
+n = 20 the standard error on accuracy is 11 points, which cannot separate 75% from 60%.
+
 ### Correction: the score is not as spent as this amendment claimed
 
 The paragraph above concluded that a repeat participant's accuracy is no longer evidence

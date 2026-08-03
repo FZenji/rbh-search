@@ -29,6 +29,66 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-03 — Round 3: discriminability down 2.5x, and confidence carries no information
+
+**15/20, +2.2σ, one-sided p = 0.021**, against 20/20 and +4.5σ in round 2. Reported as
+*"so much harder... I still struggled immensely to tell them apart"*.
+
+Raw accuracy is the wrong summary here, because the participant was biased toward calling
+things synthetic — 13 synthetic calls against 7 real, on a set that was 10/10.
+
+| | round 2 | round 3 |
+|---|---|---|
+| accuracy | 100% | 75% |
+| hit rate (real called real) | 100% | **60%** |
+| false alarms (synthetic called real) | 0% | 10% |
+| **d′ (bias-free sensitivity)** | **3.38** | **1.33** |
+| criterion c | 0 | +0.43 (leans "synthetic") |
+
+**d′ fell by a factor of 2.5.** That is the honest headline, and it is a much better measure
+than the score: it is unaffected by the response bias, which raw accuracy is not.
+
+**Four of the ten real stamps were called synthetic**, against none in round 2. Real RBH-1
+pixels now routinely pass for our generator, which is what indistinguishability looks like
+from the inside — the failure mode has flipped from "the synthetics are obviously fake" to
+"the real one looks fake too".
+
+### Confidence did not track correctness, and that changes the next move
+
+| how sure | stamps | right | rate | |
+|---|---|---|---|---|
+| guess | 3 | 2 | 67% | +0.6σ |
+| leaning | 9 | 8 | 89% | +2.3σ |
+| fairly sure | 8 | 5 | 62% | +0.7σ |
+| **certain** | **0** | — | — | — |
+
+Two things stand out. **Nothing felt certain** — in a round the participant scored 20/20 on,
+every call would have been. And the ordering is *inverted*: the bucket that felt best did
+worst (Kendall τ = −0.33, meaningless on three points, but the point is that it is not
+positive).
+
+This is exactly the case the confidence scale was built to detect, and it says something the
+score cannot: **the residual 2.2σ is not a single nameable cue.** If it were, feeling sure
+would mean being right. It doesn't, so there is no point asking for a description this time —
+rounds 1 and 2 each produced a tell that traced to a line of code, and this one will not.
+
+That also means the marginal value of another 20-stamp round is low. At n = 20 the standard
+error on accuracy is 11 points, which cannot separate 75% from 60%. Resolving whether the
+residual is real needs either a much larger round or a different instrument.
+
+### Where that leaves the Phase 2 gate
+
+ADR-0017 asks for accuracy near 50%. **75% is not 50%, and p = 0.021 means the generator is
+not yet formally indistinguishable.** That should be stated rather than rounded away.
+
+But it is also no longer the binding constraint on anything. The transplant is the reference
+standard and remains the number to quote; the generator now agrees with it on the 50%
+completeness limit to **0.16 mag**, which is within the binomial noise on 42 sites. The
+parametric numbers were never meant to stand alone, and their disagreement with real pixels
+is now smaller than the uncertainty on either.
+
+---
+
 ## 2026-08-03 — Recording confidence, because "20/20" threw away most of the data
 
 Yesterday's entry concluded that a repeat participant's score is spent — memorisation and an
