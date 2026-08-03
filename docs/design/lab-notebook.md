@@ -29,6 +29,129 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-03 — The brightness model was the wrong shape, and nobody had ever looked
+
+The fit had driven `tail_brightness` to 0.02 — a trail fading to 2% at one end — in direct
+contradiction of a participant reporting that RBH-1's brightness "barely changes". Rather
+than believe either, the real object's flux along its own axis was measured. **This had never
+been done in the whole project.**
+
+| offset | flux | |
+|---|---|---|
+| −3.20″ | 0.09 | `####` |
+| −2.66″ | 0.74 | `##################################` |
+| −2.12″ | 0.51 | `#######################` |
+| −1.58″ | 0.39 | `##################` |
+| −1.03″ | 0.54 | `#########################` |
+| −0.49″ | 0.69 | `################################` |
+| +0.05″ | 0.88 | `#########################################` |
+| +0.59″ | 1.00 | `##############################################` |
+| +1.13″ | 0.41 | `###################` |
+| +1.67″ | 0.91 | `##########################################` |
+| +2.21″ | 0.93 | `###########################################` |
+| +2.76″ | 0.08 | `####` |
+
+Zero at both ends, lumpy and trendless in between — exactly what was reported.
+
+**The generator modelled brightness as a monotonic ramp across the whole length.** That shape
+*cannot* put low flux at both ends, whatever its parameters. To make a compact bright region
+it had one option: fade one end to nothing. Which is the "shooting star" reported in round 1.
+**A single wrong shape had been generating tells for three rounds**, and each round it was
+patched somewhere else — a terminal knot removed, a curvature sign randomised, a tail
+brightness refitted — because the shape itself was never questioned.
+
+Replaced with a flat-topped window falling to zero on both sides. Mean absolute difference
+against the real profile: **0.334 → 0.118**.
+
+### Fit the thing you can measure directly
+
+Those three shape parameters are a least-squares on sixteen numbers — a second's arithmetic.
+They had been inferred indirectly, and noisily, through hour-long injection-recovery grids.
+That indirection is what let a wrong shape survive: a ramp with an extreme asymmetry produces
+roughly the right *recovered length*, so the objective was satisfied while the picture was
+wrong. **If a quantity can be read off the data, read it; do not infer it from a downstream
+statistic that a wrong model can also satisfy.**
+
+### How much of a fit to believe is itself measurable
+
+The direct fit returns `bright_fraction` 0.65, `edge_power` at whatever upper bound it is
+given, and `tail_brightness` 0.20. But the residual scatter inside the bright segment is
+**0.242 against a mean residual of 0.118** — the bins are dominated by lumpiness, not by the
+smooth shape. So the sixteen numbers support *"falls to zero at both ends over roughly two
+thirds of the length"* and nothing more precise. `edge_power` is therefore fixed at a
+sensible 8 and deliberately **not** made a fitted axis, and the asymmetry is set to 0.80
+rather than the fitted 0.20, which was fitting the lumps.
+
+### What the new shape fixed, and what it did not
+
+| | transplant | before | after |
+|---|---|---|---|
+| completeness at mag 23.77 | 1.00 | 0.74–0.90 | **1.00** |
+| recovered length | 5.61″ | 5.63″ | 5.67″ |
+| width | 0.274″ | 0.274″ | 0.274″ |
+| fragmentation | 0.86 | 0.95 | 1.00 |
+
+**Completeness now matches exactly, at every point on the grid** — structurally, not by
+tuning. That was the entire 0.29 mag pessimism.
+
+`clumpiness` also moved from 0.0 to 0.4. Its previous value had been written into this
+notebook as a finding — "most of RBH-1's fragmentation is the threshold cutting a smooth
+feature, not intrinsic lumpiness". **That was an artefact of the wrong shape**: a ramp fading
+to nothing already fragments constantly, leaving the fit no budget for real knots. With the
+correct window the fit wants clumping, which is what the participant described twice.
+
+**Fragmentation is now the one systematic miss**: 0.95–1.00 across the entire grid against a
+target of 0.857, so no parameter setting reaches it. It is a ~2σ difference on 42 sites
+(42/42 against 36/42) and sits just inside one tolerance unit, so it may be nothing — but it
+is the only statistic the model cannot reach, and it should be watched rather than tuned.
+
+### Completeness, remeasured
+
+| | 50% completeness limit |
+|---|---|
+| **transplant (real pixels)** | **24.58** |
+| parametric c = 0.0 | 24.58 |
+| parametric c = 0.3 | 24.56 |
+| parametric c = 0.6 | 24.62 |
+| parametric c = 0.9 | 24.74 |
+
+Worst-case generator-versus-transplant gap **+0.16 mag**, against −0.29 before the shape
+change and −0.41 before that, and now on the *optimistic* side rather than the pessimistic
+one. Clumpiness spread 0.18 mag. The model and real pixels agree to within the binomial
+noise on 42 sites, which is the first time that has been true.
+
+### `length_arcsec` no longer means the length you measure
+
+A test that had passed for weeks began failing: a bright 6″ synthetic came back at **1.57″**
+and fell below the window's 2″ floor. Isolating each new default:
+
+| | recovered from a 6.0″ injection |
+|---|---|
+| calibrated defaults | 1.57″ |
+| `bright_fraction = 1.0` | 6.03″ |
+| `tail_brightness = 1.0` | 2.79″ |
+| path wander off | 4.76″ |
+| all roughening off | 6.14″ |
+| **at the calibrated width 0.22″** | **4.83″** |
+
+Not a bug. `bright_fraction` means only 72% of the feature carries flux, so a shorter
+recovery is the *correct* behaviour — it is how the real object is injected at 8.10″ and
+recovered at 5.61″. The test was using a 0.12″ width, far narrower than the fitted 0.22″.
+
+Two things follow, both now asserted in `tests/test_window_diagnostic.py`:
+
+- **`WakeParameters.length_arcsec` is the full extent, not the recovered length.** Anything
+  reading it as "what the detector will report" is wrong. The completeness-versus-length grid
+  is indexed by the *injected* value, and that grid still needs re-measuring — the
+  injected-to-recovered mapping has changed materially with the new shape.
+- **`path_wander_arcsec` is absolute, so its effect scales with how narrow the feature is.**
+  A 0.14″ wander on a 0.12″-wide feature displaces it further than its own width and breaks
+  it up. It was fitted at RBH-1's width and does not scale, so injecting much narrower wakes
+  would measure a harsher selection than intended. A limitation of the parameterisation, not
+  a defect — but one that Phase 3 must not stumble into unaware.
+
+---
+
 ## 2026-08-03 — The most discriminating statistic was the one not being fitted
 
 Refitting with the two round-2 tells addressed dropped the cost from 1.40 to **0.88**, and

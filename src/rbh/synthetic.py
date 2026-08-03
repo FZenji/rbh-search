@@ -44,9 +44,16 @@ class WakeParameters:
       discovery cutout because it contains no stars. An effective drizzled PSF nearer 0.2
       arcsec would reconcile the two exactly. The generator is therefore calibrated for
       *detectability*, and its width must not be read as a physical claim about wake widths.
-    * ``clumpiness`` comes out low, 0.0-0.2, where 0.6 was assumed before measuring. Most of
-      RBH-1's observed fragmentation turns out to be the threshold cutting a smooth feature
-      at noise level, not intrinsic lumpiness.
+    * ``clumpiness`` is weakly determined and its fitted value has moved twice, for reasons
+      that were each time a defect elsewhere rather than new information about wakes. See
+      the attribute for the history; nothing downstream is allowed to depend on it, because
+      the completeness grid scans it explicitly.
+
+    The longitudinal shape - ``bright_fraction``, ``edge_power``, ``tail_brightness`` - is
+    **not** fitted through injection-recovery. It is read directly off the real object's
+    measured flux profile, which is a second's arithmetic on sixteen numbers rather than an
+    hour of trials, and which is how a monotonic ramp was finally caught masquerading as the
+    shape of a feature that actually falls to zero at both ends.
     """
 
     length_arcsec: float = 8.10
@@ -70,31 +77,70 @@ class WakeParameters:
     #: bow cannot produce that however its sign and vertex are randomised. The node profile
     #: is piecewise linear, so the direction genuinely changes at each node.
     #: Constrained by the straightness residual in the calibration objective, not guessed.
-    path_wander_arcsec: float = 0.0
+    path_wander_arcsec: float = 0.14
     #: Fractional variation of the transverse width along the feature. Real wakes are lumpy
     #: in width as well as brightness; a constant-width Gaussian ribbon reads as "extremely
     #: clean and linear", which is how the blind test was won.
     #: Interpreted as a log-width scatter: 0.6 swings the width by a factor of about 1.8
     #: either way along the feature. Fitted, not guessed - it was set by eye once and was
     #: immediately the strongest remaining discriminator in the blind-test pre-flight.
-    width_jitter: float = 0.8
-    #: 0 = a smooth ribbon, 1 = flux entirely concentrated into discrete knots. The fit
-    #: prefers zero, which is the floor and so cannot be widened downwards. Read it as
-    #: "no *additional* clumping is needed": the width and brightness variation added
-    #: after the blind test already break the feature up, and RBH-1's own fragmentation
-    #: is the detection threshold cutting a smooth feature at noise level rather than
-    #: intrinsic lumpiness. The completeness grid varies this axis explicitly regardless,
-    #: because the answer must not rest on one assumed value.
-    clumpiness: float = 0.0
+    width_jitter: float = 0.3
+    #: 0 = a smooth ribbon, 1 = flux entirely concentrated into discrete knots.
+    #:
+    #: This sat at 0.0 for as long as brightness was modelled as a monotonic ramp, and that
+    #: was recorded here as a finding - "most of RBH-1's fragmentation is the threshold
+    #: cutting a smooth feature, not intrinsic lumpiness". **It was an artefact.** A ramp
+    #: fading to nothing at one end already fragments constantly, so the fit had no budget
+    #: left for real knots and drove this to zero. With the measured flat-topped window in
+    #: place the same fit prefers 0.4, and the residual scatter of the real profile within
+    #: its bright segment is 0.242 - genuinely lumpy, as a participant said twice.
+    #:
+    #: Treat the value as weakly determined: the cost surface along this axis is flat
+    #: within noise (1.38, 1.54, 1.23 at 0.0, 0.2, 0.4). The completeness grid varies it
+    #: explicitly regardless, which is the reason nothing downstream depends on the fit.
+    clumpiness: float = 0.4
     n_clumps: int = 6
     #: Width of an individual knot along the axis, as a fraction of total length.
     clump_length_fraction: float = 0.07
-    #: Brightness of the tail end relative to the tip end, before clumping. Refitted from
-    #: 0.02 after the blind test: the old value made the feature fade almost to nothing at
-    #: one end, which together with the terminal knot at the other produced the "shooting
-    #: star" a human picked out every time. Both ends now carry real flux, as the
-    #: transplanted real object does. An interior optimum - 0.02 and 0.40 are both worse.
-    tail_brightness: float = 0.10
+    #: Fraction of the total length that carries the flux. The profile is flat-topped over
+    #: this fraction and falls to zero on both sides of it.
+    #:
+    #: This exists because the real object was finally measured. RBH-1's flux per unit
+    #: length, in bins of 0.54 arcsec, runs
+    #: ``0.00 0.00 0.09 0.74 0.51 0.39 0.54 0.69 0.88 1.00 0.41 0.91 0.93 0.08 0.00 0.00``
+    #: - **zero at both ends**, lumpy in between, and with no systematic trend across the
+    #: bright part. The generator had modelled brightness as a monotonic ramp across the
+    #: whole length, a shape that cannot produce that however its parameters are set. The
+    #: calibration compensated by driving the ramp as steep as it would go, which fades one
+    #: end and is precisely the "shooting star" reported in round 1 of the blind test.
+    #:
+    #: Constrained by the recovered length, which is already in the objective: the
+    #: transplant is injected at 8.10 arcsec and recovered at 5.61, and this fraction is
+    #: what sets that ratio honestly rather than by a ramp dipping below the threshold.
+    #:
+    #: 0.65 comes from a least-squares fit of this window to the measured profile. **How
+    #: much of that fit to believe is itself a measurement**: the residual scatter inside
+    #: the bright segment is 0.242 against a mean residual of 0.118, so the bins are
+    #: dominated by lumpiness rather than by the smooth shape. What the sixteen bins do
+    #: support is "falls to zero at both ends, over roughly two thirds of the length". They
+    #: do not support the third decimal place, and the calibration grid scans around this.
+    bright_fraction: float = 0.72
+    #: How sharply the profile falls at the ends of the bright segment. 2 is a Gaussian
+    #: taper, large values approach a hard-edged box. The measured profile drops from 0.74
+    #: to 0.09 to 0.00 over about one bin, so it is much closer to a box - but the direct
+    #: fit simply runs to whatever upper bound it is given, which means the data say "sharp"
+    #: and nothing more precise. 8 is sharp without pretending to a precision that is not
+    #: there, and it is deliberately not a fitted axis for the same reason.
+    edge_power: float = 8.0
+    #: Brightness of one end of the bright segment relative to the other, *within* the
+    #: window above rather than across the whole length.
+    #:
+    #: The direct fit returns 0.20, a strong trend, but that is it fitting the lumps: the
+    #: bright bins run 0.74, 0.51, 0.39, 0.54, 0.69, 0.88, 1.00, 0.41, 0.91, 0.93, which is
+    #: a weak rise buried in scatter twice its size. Set to 0.80 - a gentle asymmetry, the
+    #: most the data actually support - and left as a fitted axis so detectability can
+    #: refine what the profile alone cannot.
+    tail_brightness: float = 0.60
     #: Extra flux in a compact knot at the leading tip, as a fraction of the total.
     #:
     #: Default **0**, changed from 0.12 after the blind test. None of the four calibration
@@ -146,13 +192,24 @@ def _spine_coordinates(
 def _longitudinal_profile(
     along: NDArray[np.float64], params: WakeParameters, rng: np.random.Generator
 ) -> NDArray[np.float64]:
-    """Brightness along the feature: a ramp, modulated by knots, plus a terminal knot."""
+    """Brightness along the feature: a flat-topped window, modulated by knots.
+
+    The window is the shape RBH-1 actually has - see ``bright_fraction``. It replaced a
+    monotonic ramp across the full length, which could not put low flux at *both* ends and
+    so forced the calibration into an extreme asymmetry to fake a compact bright region.
+    """
     half = params.length_arcsec / 2.0
     inside = np.abs(along) <= half
 
-    # Ramp from the tail (-half) to the tip (+half).
+    # Flat-topped window: roughly constant over bright_fraction of the length, falling to
+    # zero on both sides. edge_power controls how boxy the fall is.
+    half_bright = max(0.5 * params.bright_fraction * params.length_arcsec, 1e-6)
+    window = np.exp(-(np.abs(along / half_bright) ** params.edge_power))
+
+    # Gentle asymmetry within the bright segment. The measured profile is close to
+    # symmetric, so this is a small correction rather than the main shape.
     t = np.clip((along + half) / params.length_arcsec, 0.0, 1.0)
-    ramp = params.tail_brightness + (1.0 - params.tail_brightness) * t
+    ramp = window * (params.tail_brightness + (1.0 - params.tail_brightness) * t)
 
     # Knots at jittered positions along the axis. Flux is redistributed, not added: the
     # modulation has mean 1 by construction, so total magnitude stays fixed and only the

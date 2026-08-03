@@ -42,7 +42,21 @@ def injector(params: WakeParameters) -> Callable[[Tile, tuple[int, int], Generat
 
 
 def test_a_bright_wake_is_recovered_and_passes_the_window(noise_field: np.ndarray) -> None:
-    params = WakeParameters(length_arcsec=6.0, width_arcsec=0.12, total_mag_ab=17.0)
+    """A bright wake at calibrated-ish parameters survives the selection window.
+
+    ``width_arcsec`` is the fitted 0.22 rather than the 0.12 this test used to pass with.
+    That is not cosmetic. Once ``bright_fraction`` was introduced, ``length_arcsec`` stopped
+    meaning "the length you will measure": only that fraction of the feature carries flux,
+    exactly as the real object is injected at 8.10 arcsec and recovered at 5.61. On a
+    0.12 arcsec feature the roughening then compounds - a 6 arcsec injection came back as
+    1.57 arcsec, below the window's 2 arcsec floor - because a path wander of 0.14 arcsec is
+    larger than the feature is wide, while at the calibrated 0.22 the same injection returns
+    4.83 arcsec and passes comfortably.
+
+    **The wander parameter is absolute, so its effect scales with how narrow the feature
+    is**, and nothing in the calibration explores widths that far from RBH-1's.
+    """
+    params = WakeParameters(length_arcsec=6.0, width_arcsec=0.22, total_mag_ab=17.0)
     trial = run_trial(
         blank(noise_field),
         injector(params),

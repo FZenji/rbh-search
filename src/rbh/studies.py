@@ -360,7 +360,7 @@ def calibrate_generator(
     #: search space**. Nothing flagged it: the pinning check cannot fire on 0.10 when 0.02
     #: is also scanned, because that is an interior point of a range that was simply in the
     #: wrong place.
-    tail_values: Sequence[float] = (0.02, 0.05, 0.10, 0.22, 0.40, 0.60),
+    tail_values: Sequence[float] = (0.60, 0.80, 1.00),
     clumpiness_values: Sequence[float] = (0.0, 0.2, 0.4),
     #: **Do not trim these ranges using minima measured under a different objective.** That
     #: was done once, on the reasoning that a sharp interior minimum makes the outer points
@@ -370,15 +370,18 @@ def calibrate_generator(
     #: a property of the objective, not of the model, so **changing the objective voids every
     #: measurement used to justify narrowing a grid.** The pinning check caught it, which is
     #: the third time it has paid for itself, but it should not have had to.
-    width_values: Sequence[float] = (0.16, 0.19, 0.22, 0.25),
+    width_values: Sequence[float] = (0.19, 0.22, 0.25),
     #: Multi-node spine deviation, giving direction changes partway along rather than a
     #: single smooth bow. Fitted against the straightness residual.
-    path_wander_values: Sequence[float] = (0.05, 0.10, 0.14),
+    path_wander_values: Sequence[float] = (0.08, 0.14, 0.20),
+    #: Fraction of the length carrying flux. Measured on the real object at about
+    #: 0.72; scanned around that because the measurement is one object in one band.
+    bright_fraction_values: Sequence[float] = (0.58, 0.65, 0.72),
     #: Added as a fitted axis rather than a constant after the second blind-test
     #: pre-flight: set by eye it was the strongest remaining discriminator between real
     #: and synthetic stamps. Interpreted as a log-width scatter, so 0.6 means the width
     #: swings by a factor of e**0.6, roughly 1.8, either way along the feature.
-    width_jitter_values: Sequence[float] = (0.3, 0.45, 0.6, 0.8, 1.0),
+    width_jitter_values: Sequence[float] = (0.15, 0.30, 0.45),
     psf_fwhm_arcsec: float = DEFAULT_PSF_FWHM_ARCSEC,
     length_arcsec: float = DEFAULT_LENGTH_ARCSEC,
     window: SelectionWindow | None = None,
@@ -398,14 +401,20 @@ def calibrate_generator(
 
     scanned: list[dict[str, float]] = []
     best: tuple[float, WakeParameters, dict[str, float]] | None = None
-    for tail, clumpiness, width, jitter, wander in itertools.product(
-        tail_values, clumpiness_values, width_values, width_jitter_values, path_wander_values
+    for tail, clumpiness, width, jitter, wander, bright in itertools.product(
+        tail_values,
+        clumpiness_values,
+        width_values,
+        width_jitter_values,
+        path_wander_values,
+        bright_fraction_values,
     ):
         params = WakeParameters(
             length_arcsec=length_arcsec,
             width_arcsec=width,
             width_jitter=jitter,
             path_wander_arcsec=wander,
+            bright_fraction=bright,
             clumpiness=clumpiness,
             tail_brightness=tail,
             total_mag_ab=reference.total_mag_ab,
@@ -427,6 +436,7 @@ def calibrate_generator(
                 "width_arcsec": width,
                 "width_jitter": jitter,
                 "path_wander_arcsec": wander,
+                "bright_fraction": bright,
                 "cost": cost,
                 **got,
             }
@@ -451,6 +461,7 @@ def calibrate_generator(
                 "tail_brightness": tail_values,
                 "clumpiness": clumpiness_values,
                 "width_arcsec": width_values,
+                "bright_fraction": bright_fraction_values,
                 "width_jitter": width_jitter_values,
                 "path_wander_arcsec": path_wander_values,
             },
