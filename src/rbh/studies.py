@@ -562,7 +562,11 @@ def completeness_vs_length(
     fixture_path: Path,
     destinations_dir: Path | None,
     *,
-    lengths_arcsec: Sequence[float] = (2.5, 4.0, 6.0, 8.1, 12.0, 16.0),
+    #: 3.0 and 3.5 added to sample the short end finely. Only ``bright_fraction`` of the
+    #: injected length carries flux, so a 2.5 arcsec feature presents a 1.8 arcsec bright
+    #: segment - below ADR-0007's 2 arcsec floor. There is now a hard short-length cutoff
+    #: in the selection function, and it needs locating rather than straddling.
+    lengths_arcsec: Sequence[float] = (2.5, 3.0, 3.5, 4.0, 6.0, 8.1, 12.0, 16.0),
     magnitudes: Sequence[float] = (23.0, 23.8, 24.4, 25.0),
     params: WakeParameters | None = None,
     psf_fwhm_arcsec: float = DEFAULT_PSF_FWHM_ARCSEC,
@@ -586,6 +590,19 @@ def completeness_vs_length(
     ADR-0017 exists to avoid. So the length axis rests on the parametric generator, which was
     calibrated only at 8.1 arcsec. Extrapolation along this axis is an assumption, and the
     8.1 arcsec column is the one that is anchored.
+
+    **``length_arcsec`` here is the injected full extent, not what the detector reports.**
+    Since ``bright_fraction`` was measured off the real object, only about 72% of a feature
+    carries flux, so the recovered length is systematically shorter - which is how RBH-1 is
+    injected at 8.10 arcsec and recovered at 5.61. Each row records ``median_length_arcsec``
+    alongside, and the two must not be conflated.
+
+    That has a consequence at the short end. A 2.5 arcsec injection presents a 1.8 arcsec
+    bright segment, below the 2 arcsec floor of ADR-0007's window, so it cannot pass however
+    bright it is. **The selection function now has a hard short-length cutoff**, and it is
+    inherited from a bright fraction measured on exactly one object at one length. Whether a
+    short wake has the same bright fraction as an 8 arcsec one is an assumption, not a
+    measurement, and it is doing real work here.
     """
     window = window or SelectionWindow()
     params = params or WakeParameters()
@@ -644,23 +661,54 @@ def completeness_vs_length(
 
 
 def mean_surface_brightness(
-    total_mag_ab: float, length_arcsec: float, width_arcsec: float
+    total_mag_ab: float,
+    length_arcsec: float,
+    width_arcsec: float,
+    bright_fraction: float = 1.0,
 ) -> float:
-    """Mean surface brightness in mag per square arcsec, for a feature of this size.
+    """Mean surface brightness in mag per square arcsec, over the part that carries flux.
 
     Reported alongside the completeness grid because magnitude alone is misleading across the
     length axis: at fixed total magnitude a longer feature is spread thinner, so it is fainter
     per unit area and harder to detect even though it is nominally "the same brightness".
+
+    ``bright_fraction`` matters, and defaulting it to 1 would quietly misreport the number.
+    The flux is confined to that fraction of the length, so the area it is spread over is
+    smaller and the surface brightness correspondingly higher - by 0.36 mag at the fitted
+    0.72. Before the real object's profile was measured the generator had a monotonic ramp
+    with no such parameter, so this argument did not exist and every figure produced by this
+    function assumed the flux filled the whole length.
     """
-    area = max(length_arcsec * width_arcsec, 1e-9)
+    area = max(length_arcsec * max(bright_fraction, 1e-9) * width_arcsec, 1e-9)
     return total_mag_ab + 2.5 * math.log10(area)
+
+
+def describe_half_limit(magnitudes: Sequence[float], completeness: Sequence[float]) -> str:
+    """Render the 50% limit as text, distinguishing the two ways it can be absent.
+
+    :func:`half_completeness_limit` returns NaN both when the curve never rises to 50% and
+    when it never falls to it, and those mean **opposite things**: the first is a feature
+    that cannot be found at any brightness sampled, the second one that is found at every
+    brightness sampled. Printing them identically is how the length grid briefly showed a
+    2.5 arcsec feature (7% everywhere) and a 4.0 arcsec feature (57% at the faintest point)
+    with the same label.
+    """
+    limit = half_completeness_limit(magnitudes, completeness)
+    if not math.isnan(limit):
+        return f"{limit:.2f}"
+    if not completeness:
+        return "n/a"
+    if max(completeness) < 0.5:
+        return f"< {min(magnitudes):.1f}"
+    return f"> {max(magnitudes):.1f}"
 
 
 def half_completeness_limit(magnitudes: Sequence[float], completeness: Sequence[float]) -> float:
     """Magnitude at which completeness crosses 50%, by linear interpolation.
 
     Returns NaN if the curve never crosses, which is the honest answer rather than an
-    extrapolation.
+    extrapolation. **NaN is ambiguous on its own** - see :func:`describe_half_limit`, which
+    should be used for anything a person reads.
     """
     for i in range(len(magnitudes) - 1):
         if completeness[i] >= 0.5 > completeness[i + 1]:

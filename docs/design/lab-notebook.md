@@ -29,6 +29,61 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-03 — The length grid inverts: reach now peaks near 4 arcsec, not at 16
+
+Re-measured after the profile-shape fix. **The previous version of this grid said the
+opposite of the new one**, and the old headline — *"surface-brightness reach improves
+monotonically with length, 24.12 at 2.5″ to 25.33 at 16″"* — is superseded.
+
+Completeness (%), injected length against total magnitude, `bright_fraction = 0.72`:
+
+| injected | bright | recovered | 23.0 | 23.8 | 24.4 | 25.0 | 50% limit | SB at 25.0 |
+|---|---|---|---|---|---|---|---|---|
+| 2.5″ | 1.80″ | 1.96″ | 7 | 7 | 7 | 2 | **< 23.0** | 24.0 |
+| 3.0″ | 2.16″ | 2.38″ | 76 | 64 | 45 | 31 | 24.25 | 24.2 |
+| 3.5″ | 2.52″ | 2.80″ | 100 | 93 | 79 | 45 | 24.91 | 24.4 |
+| **4.0″** | 2.88″ | 3.18″ | 100 | 100 | 93 | 57 | **> 25.0** | 24.5 |
+| 6.0″ | 4.32″ | 4.70″ | 100 | 100 | 88 | 40 | 24.88 | 24.9 |
+| 8.1″ | 5.83″ | 6.08″ | 98 | 98 | 71 | 19 | 24.65 | 25.3 |
+| 12.0″ | 8.64″ | 8.69″ | 98 | 90 | 48 | 12 | 24.37 | 25.7 |
+| 16.0″ | 11.52″ | 10.96″ | 98 | 75 | 18 | 10 | 24.06 | 26.0 |
+
+### A hard short-length cutoff, exactly where predicted
+
+A 2.5″ injection presents a **1.80″ bright segment**, below ADR-0007's 2.00″ floor, and
+recovers 1.96″ — so it fails the window at *every* brightness, 7% even at magnitude 23.0.
+The cutoff sits between 2.5″ and 3.0″ injected, and it is not a detector limit: the feature
+is found and then rejected for being too short.
+
+**This cutoff is inherited from a bright fraction measured on one object at one length.**
+Whether a 3″ wake devotes the same 72% of itself to bright material as an 8″ one is an
+assumption doing real work in the selection function, and it should be stated wherever the
+short end of the grid is quoted.
+
+### The relationship is non-monotonic now
+
+Reach peaks around 3.5–4″ and falls away on both sides: short features die on the window
+floor, long ones spread their flux too thin. The old grid found monotonic improvement with
+length because a monotonic *ramp* concentrated flux at one end regardless of how long the
+feature was, which is not what the real object does.
+
+The 8.1″ row — the only length with any anchor to the real object — gives a 50% limit of
+24.65, consistent with the 24.58 the transplant gives on the brightness grid.
+
+### A NaN that meant two opposite things
+
+The first version of this table printed "never" for both 2.5″ and 4.0″.
+`half_completeness_limit` returns NaN when the curve never crosses 50%, and that happens
+for opposite reasons: 2.5″ never *rises* to it, 4.0″ never *falls* to it. One is the worst
+row in the table and the other is the best. `describe_half_limit` now reports `< 23.0` or
+`> 25.0`, and both cases are pinned by tests.
+
+Also corrected: `mean_surface_brightness` was spreading the flux over the whole injected
+length, which stopped being right the moment `bright_fraction` existed. Every figure it
+produced was 0.36 mag too faint.
+
+---
+
 ## 2026-08-03 — Round 3: discriminability down 2.5x, and confidence carries no information
 
 **15/20, +2.2σ, one-sided p = 0.021**, against 20/20 and +4.5σ in round 2. Reported as

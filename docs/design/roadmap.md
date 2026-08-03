@@ -131,11 +131,14 @@ cross-filter assumption behaving as advertised.
 
 The completeness grid above is one slice, not a selection function. Still to do:
 
-- **Other inclinations and colours.** The length axis is now measured: surface-brightness
-  reach improves monotonically with length, 24.12 at 2.5″ to 25.33 at 16″, which is what a
-  matched filter should do. Only the short end is limited, by the selection window itself.
-  See the [lab notebook](lab-notebook.md) — including the harness bug that made the first
-  version of this grid say the opposite.
+- **Other inclinations and colours.** The length axis is measured, and **re-measured after the
+  profile-shape fix, which inverted it.** Reach is *not* monotonic in length: it peaks near
+  3.5–4″ (50% limit past 25.0) and falls away on both sides, to 24.06 at 16″ and to nothing at
+  2.5″. Short features die on the selection window's 2″ floor — a 2.5″ injection presents only
+  a 1.80″ bright segment — and long ones spread their flux too thin. The earlier claim of
+  monotonic improvement was an artefact of the monotonic brightness ramp, which concentrated
+  flux at one end at any length. See the [lab notebook](lab-notebook.md), including the harness
+  bug that made the *first* version of this grid say the opposite of the second.
 - **A representative edge-on disc sample.** Started: `rbh.negatives` harvests them from real
   tiles by segmentation photometry, and the stage 6 features are measured against them for the
   first time (see the [ADR-0008 amendment](../adr/0008-scored-discriminants-not-cuts.md)). But

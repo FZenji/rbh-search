@@ -20,7 +20,9 @@ from rbh.studies import (
     calibration_cost,
     collect_sites,
     completeness_grid,
+    describe_half_limit,
     half_completeness_limit,
+    mean_surface_brightness,
     real_object_exclusion,
     reference_template,
 )
@@ -124,3 +126,53 @@ def test_half_limit_interpolates() -> None:
 def test_half_limit_is_nan_when_the_curve_never_crosses() -> None:
     assert math.isnan(half_completeness_limit([24.0, 25.0], [1.0, 0.9]))
     assert math.isnan(half_completeness_limit([24.0, 25.0], [0.2, 0.1]))
+
+
+def test_surface_brightness_accounts_for_the_bright_fraction() -> None:
+    """Flux confined to part of the length is spread over less area, so it is brighter.
+
+    Worth an explicit test because the parameter arrived late: for weeks the generator had a
+    monotonic ramp with no bright fraction, so this function assumed flux filled the whole
+    length, and the completeness-versus-length table reported a surface brightness 0.36 mag
+    too faint the moment that stopped being true.
+    """
+    full = mean_surface_brightness(24.0, 8.0, 0.22, 1.0)
+    partial = mean_surface_brightness(24.0, 8.0, 0.22, 0.72)
+    assert partial < full, "a smaller area at fixed flux must be brighter, i.e. a lower mag"
+    assert full - partial == pytest.approx(2.5 * math.log10(1 / 0.72), abs=1e-9)
+
+
+def test_surface_brightness_defaults_to_the_whole_length() -> None:
+    """The default must reproduce the old behaviour exactly, so old numbers stay comparable."""
+    assert mean_surface_brightness(24.0, 8.0, 0.22) == pytest.approx(
+        mean_surface_brightness(24.0, 8.0, 0.22, 1.0)
+    )
+
+
+def test_surface_brightness_falls_with_length_at_fixed_magnitude() -> None:
+    """The reason this column exists: a longer feature at the same total magnitude is fainter."""
+    short = mean_surface_brightness(24.0, 4.0, 0.22, 0.72)
+    long_ = mean_surface_brightness(24.0, 16.0, 0.22, 0.72)
+    assert long_ > short
+
+
+def test_half_limit_description_separates_the_two_kinds_of_nan() -> None:
+    """NaN means "never crossed", which happens for opposite reasons.
+
+    A curve entirely below 50% is a feature that cannot be found at any brightness sampled.
+    A curve entirely above it is one found at every brightness sampled. Both return NaN, and
+    printing them identically is exactly what the length grid did: a 2.5 arcsec feature at 7%
+    everywhere and a 4.0 arcsec feature at 57% at the faintest point were shown with the same
+    label, which inverts the reading of the best row in the table.
+    """
+    mags = [23.0, 23.8, 24.4, 25.0]
+    assert describe_half_limit(mags, [0.07, 0.07, 0.07, 0.02]) == "< 23.0"
+    assert describe_half_limit(mags, [1.0, 1.0, 0.93, 0.57]) == "> 25.0"
+
+
+def test_half_limit_description_reports_a_real_crossing() -> None:
+    assert describe_half_limit([24.0, 25.0], [1.0, 0.0]) == "24.50"
+
+
+def test_half_limit_description_handles_no_data() -> None:
+    assert describe_half_limit([], []) == "n/a"

@@ -400,26 +400,57 @@ def completeness_length(
     """
     import json
 
-    from rbh.studies import completeness_vs_length, mean_surface_brightness
+    from rbh.studies import (
+        completeness_vs_length,
+        describe_half_limit,
+        mean_surface_brightness,
+    )
     from rbh.synthetic import WakeParameters
 
     rows = completeness_vs_length(FIXTURE_PATH, destinations, per_tile=per_tile, workers=workers)
-    width = WakeParameters().width_arcsec
+    defaults = WakeParameters()
+    width, bright = defaults.width_arcsec, defaults.bright_fraction
 
     lengths = sorted({float(r["length_arcsec"]) for r in rows})
     mags = sorted({float(r["mag"]) for r in rows})
-    typer.echo("completeness (%), rows = length, columns = total magnitude")
-    typer.echo("length" + "".join(f"{m:>10.1f}" for m in mags) + "   mean SB at faintest")
+    typer.echo(
+        "completeness (%), rows = INJECTED length, columns = total magnitude.\n"
+        f"Only {bright:.0%} of an injected feature carries flux, so the detector reports "
+        "less;\nthe recovered column is what a catalogue would contain."
+    )
+    typer.echo(
+        "inject" + "".join(f"{m:>9.1f}" for m in mags) + "   recovered   50% lim     SB@faint"
+    )
     for length in lengths:
         cells = []
+        recovered: list[float] = []
         for mag in mags:
             match = [
                 r for r in rows if float(r["length_arcsec"]) == length and float(r["mag"]) == mag
             ]
             value = float(match[0]["completeness"]) if match else float("nan")
-            cells.append("     n/a" if math.isnan(value) else f"{100 * value:>8.0f}")
-        surface = mean_surface_brightness(mags[-1], length, width)
-        typer.echo(f"{length:>6.1f}" + "".join(f"{c:>10}" for c in cells) + f"{surface:>16.1f}")
+            cells.append("    n/a" if math.isnan(value) else f"{100 * value:>7.0f}")
+            if match:
+                got = float(match[0].get("median_length_arcsec", float("nan")))
+                if not math.isnan(got):
+                    recovered.append(got)
+        median = f"{sorted(recovered)[len(recovered) // 2]:.2f}" if recovered else "n/a"
+        surface = mean_surface_brightness(mags[-1], length, width, bright)
+        completeness = [
+            float(r["completeness"])
+            for m in mags
+            for r in rows
+            if float(r["length_arcsec"]) == length
+            and float(r["mag"]) == m
+            and not math.isnan(float(r["completeness"]))
+        ]
+        typer.echo(
+            f"{length:>6.1f}"
+            + "".join(f"{c:>9}" for c in cells)
+            + f"{median:>12}"
+            + f"{describe_half_limit(mags[: len(completeness)], completeness):>10}"
+            + f"{surface:>10.1f}"
+        )
 
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({"width_arcsec": width, "rows": rows}, indent=1), encoding="utf-8")
