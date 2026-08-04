@@ -140,3 +140,22 @@ RBH1_LITMUS: Final[LitmusExpectation] = LitmusExpectation(
     full_extent_tolerance=1.00,
     min_colour_gradient_significance=1.5,
 )
+
+
+#: How the wake detection limit relates to a tile's own point-source depth (ADR-0018).
+#:
+#: Measured by degrading the discovery visit over a sixteen-fold range in exposure: the 50%
+#: completeness limit for a transplanted RBH-1 sits this many magnitudes brighter than the
+#: tile's 5-sigma point-source limiting magnitude, with r^2 = 0.990.
+#:
+#: This is what lets Phase 3 predict completeness per tile from a weight map instead of
+#: running injection-recovery everywhere.
+#:
+#: **It is an upper bound on completeness**, so a lower bound on this offset. Degrading adds
+#: photon noise only; real shallow data also carries cosmic-ray residual, poorer sky
+#: subtraction and a worse effective PSF, all of which push the true offset larger. Validate
+#: against genuinely shallow real tiles before quoting it as anything but a bound.
+WAKE_LIMIT_BELOW_POINT_SOURCE_MAG = 3.03
+
+#: Scatter on the offset above, across the measured depth range.
+WAKE_LIMIT_OFFSET_SCATTER_MAG = 0.09

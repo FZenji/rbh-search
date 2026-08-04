@@ -712,3 +712,67 @@ def fetch_fixture(
     write_tile(tile, out)
     size_kb = out.stat().st_size / 1024
     typer.echo(f"wrote {out} ({size_kb:.0f} KB), bands={tile.filter_names}, tier={tile.tier}")
+
+
+@app.command("completeness-depth")
+def completeness_depth(
+    destinations: Annotated[
+        Path, typer.Option(help="Directory of cached destination tiles.")
+    ] = Path("data/destinations"),
+    out: Annotated[Path, typer.Option(help="Where to write the depth grid.")] = Path(
+        "runs/completeness-depth.json"
+    ),
+    per_tile: Annotated[int, typer.Option(help="Injection sites per tile.")] = 2,
+    workers: Annotated[
+        int | None,
+        typer.Option(help="Worker processes; default uses all cores but two."),
+    ] = None,
+) -> None:
+    """Measure completeness against depth, by degrading real tiles (ADR-0018).
+
+    Every other completeness number in this project is conditional on the depth of one
+    visit. This is the axis that makes the selection function usable across an archive whose
+    depth spans orders of magnitude.
+
+    Reports an UPPER BOUND: degrading adds photon noise and nothing else, while real shallow
+    data also carries more cosmic-ray residual, poorer sky subtraction and a worse effective
+    PSF. Real completeness at a given depth is lower than this.
+    """
+    import json
+
+    from rbh.studies import completeness_vs_depth, describe_half_limit
+
+    rows = completeness_vs_depth(FIXTURE_PATH, destinations, per_tile=per_tile, workers=workers)
+    fractions = sorted({float(r["exposure_fraction"]) for r in rows}, reverse=True)
+    mags = sorted({float(r["mag"]) for r in rows})
+
+    typer.secho(
+        "UPPER BOUND on completeness: photon noise only, no extra artifacts (ADR-0018).",
+        fg=typer.colors.YELLOW,
+    )
+    for source in ("transplant", "parametric"):
+        typer.echo(f"\n{source}: completeness (%), rows = depth, columns = source magnitude")
+        typer.echo(
+            f"{'exp':>6}{'5sig lim':>10}" + "".join(f"{m:>8.1f}" for m in mags) + f"{'50% lim':>10}"
+        )
+        for fraction in fractions:
+            selected = [
+                r
+                for r in rows
+                if r["source"] == source and float(r["exposure_fraction"]) == fraction
+            ]
+            if not selected:
+                continue
+            depth = float(selected[0]["depth_mag"])
+            by_mag = {float(r["mag"]): float(r["completeness"]) for r in selected}
+            comps = [by_mag.get(m, float("nan")) for m in mags]
+            cells = "".join("     n/a" if math.isnan(c) else f"{100 * c:>8.0f}" for c in comps)
+            usable = [c for c in comps if not math.isnan(c)]
+            typer.echo(
+                f"{fraction:>6.3f}{depth:>10.2f}{cells}"
+                f"{describe_half_limit(mags[: len(usable)], usable):>10}"
+            )
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps({"rows": rows}, indent=1), encoding="utf-8")
+    typer.echo(f"\nwrote {out}")

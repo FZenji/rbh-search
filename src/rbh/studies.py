@@ -25,6 +25,7 @@ import numpy as np
 from scipy import ndimage
 
 from rbh.config import SelectionWindow
+from rbh.depth import degrade_tile, depth_of
 from rbh.inject import Injection, free_positions, inject_synthetic, inject_template
 from rbh.parallel import map_trials
 from rbh.pipeline import detect_in_tile
@@ -718,3 +719,90 @@ def half_completeness_limit(magnitudes: Sequence[float], completeness: Sequence[
             fraction = (completeness[i] - 0.5) / span
             return float(magnitudes[i] + fraction * (magnitudes[i + 1] - magnitudes[i]))
     return float("nan")
+
+
+def completeness_vs_depth(
+    fixture_path: Path,
+    destinations_dir: Path | None,
+    *,
+    exposure_fractions: Sequence[float] = (1.0, 0.5, 0.25, 0.125, 0.0625),
+    magnitudes: Sequence[float] = (23.0, 23.8, 24.4, 25.0, 25.6),
+    params: WakeParameters | None = None,
+    psf_fwhm_arcsec: float = DEFAULT_PSF_FWHM_ARCSEC,
+    window: SelectionWindow | None = None,
+    per_tile: int = 2,
+    seed: int = 11000,
+    workers: int | None = None,
+) -> list[dict[str, float | str]]:
+    """Measure completeness against depth, for the transplant and the generator (ADR-0018).
+
+    Every completeness number the project quotes is currently conditional on one depth - the
+    RBH-1 discovery visit, one orbit per filter - while ADR-0001 commits the search to an
+    archive whose depth spans orders of magnitude. This is the axis that makes the selection
+    function usable off that single visit.
+
+    Depth is simulated by degrading real tiles (:mod:`rbh.depth`) and reported as a limiting
+    magnitude rather than an exposure fraction, because exposure time is not comparable across
+    instruments and the corpus spans several.
+
+    **The result is an upper bound on completeness, not an estimate.** Degrading adds photon
+    noise and nothing else; genuinely shallow archival data also carries more cosmic-ray
+    residual, poorer sky subtraction and a worse effective PSF. All of those make real data
+    harder than this, so real completeness at a given depth is lower. The bound is one-sided
+    and in the safe direction for a null result - overstating completeness understates the
+    space density that can be claimed - but it is a bound and ADR-0018 requires it be quoted
+    as one, and validated against real shallow tiles once the Phase 3 manifest exists.
+
+    Both source classes are run at each depth. The transplant is real pixels and stays the
+    reference; the generator is included because the length and inclination axes rest on it
+    and it is worth knowing whether the two track each other as the data get worse.
+    """
+    window = window or SelectionWindow()
+    params = params or WakeParameters()
+    reference = reference_template(fixture_path)
+    base_sites = collect_sites(fixture_path, destinations_dir, per_tile=per_tile, seed=seed)
+    rows: list[dict[str, float | str]] = []
+
+    for index, fraction in enumerate(exposure_fractions):
+        # One generator per depth, seeded from the depth index, so a rerun reproduces the
+        # same degraded pixels (ADR-0012) and two depths never share a noise realisation.
+        rng = np.random.default_rng(seed + 977 * index)
+        sites = [replace(site, tile=degrade_tile(site.tile, fraction, rng)) for site in base_sites]
+        limits = [depth_of(site.tile) for site in sites]
+        blue = reference.blue_filter
+        depth_mag = float(np.median([limit[blue] for limit in limits if blue in limit]))
+
+        for magnitude in magnitudes:
+            scale = 10.0 ** (-0.4 * (magnitude - reference.total_mag_ab))
+            got = _run_transplant(
+                sites, reference, flux_scale=scale, window=window, seed=seed, workers=workers
+            )
+            rows.append(
+                {
+                    "source": "transplant",
+                    "exposure_fraction": fraction,
+                    "depth_mag": depth_mag,
+                    "mag": magnitude,
+                    **got,
+                }
+            )
+
+            local = replace(params, total_mag_ab=magnitude, colour_ab=reference.colour_ab)
+            got = _run_parametric(
+                sites,
+                local,
+                psf_fwhm_arcsec=psf_fwhm_arcsec,
+                window=window,
+                seed=seed,
+                workers=workers,
+            )
+            rows.append(
+                {
+                    "source": "parametric",
+                    "exposure_fraction": fraction,
+                    "depth_mag": depth_mag,
+                    "mag": magnitude,
+                    **got,
+                }
+            )
+    return rows

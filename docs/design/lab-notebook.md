@@ -29,6 +29,63 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-04 — Phase 3 opens: the wake limit tracks a tile's own depth to 0.09 mag
+
+Every completeness number this project quotes was conditional on one visit's depth, while
+[ADR-0001](../adr/0001-search-the-full-archive.md) commits the search to an archive whose
+depth spans orders of magnitude. [ADR-0018](../adr/0018-selection-function-stratified-by-depth.md)
+closes that by degrading real tiles: weight scales with exposure, noise as `1/sqrt(weight)`.
+
+Sanity check first — the 5σ point-source limits come out **27.80, 27.41, 27.03, 26.67,
+26.29** across exposure fractions 1, ½, ¼, ⅛, 1/16, falling 0.375 mag per halving against a
+predicted `2.5 log10(sqrt 2) = 0.376`. The arithmetic is doing what it claims.
+
+### The result worth having
+
+| 5σ point-source limit | wake 50% limit (transplant) | offset |
+|---|---|---|
+| 27.80 | 24.64 | 3.16 |
+| 27.41 | 24.43 | 2.98 |
+| 27.03 | 23.98 | 3.06 |
+| 26.67 | 23.66 | 3.00 |
+| 26.29 | 23.36 | 2.93 |
+
+**The wake 50% limit sits 3.03 ± 0.09 mag brighter than the tile's 5σ point-source limit**,
+holding across a sixteen-fold range in exposure. r² = 0.990.
+
+That is what makes the selection function usable as a survey: the 5σ limit is computable
+directly from a tile's own weight map, so **completeness can be predicted per tile to about
+0.1 mag without running injection–recovery on it**. Without this, Phase 3 would have to
+either assume one depth everywhere or run trials on every tile it touched.
+
+A regression gives a slope of 0.88 ± 0.05 rather than 1.00, and the offsets do drift very
+slightly downward. Over the 1.5 mag probed the two descriptions are not distinguishable, and
+a slope below one should not be extrapolated far outside this range on five points.
+
+### The generator tracks real pixels across depth, not just where it was fitted
+
+Transplant minus parametric 50% limit, by exposure fraction: **+0.02, +0.03, −0.15, −0.10,
+−0.04 mag**. Agreement is best at and near the calibration depth, as expected, and never
+worse than 0.15 mag anywhere. This is the first evidence that ADR-0017's tier-2 generator is
+useful *away* from the single point it was calibrated at — worth having, because the length
+and inclination axes rest entirely on it.
+
+### What this measurement is not
+
+**An upper bound, and quoted as one everywhere it appears.** Degrading adds photon noise and
+nothing else. Real shallow archival data also carries cosmic-ray residual surviving fewer
+dithers, poorer sky subtraction, a worse effective PSF and more surviving artifacts — all of
+which make real data *harder* than this. The bound is one-sided in the safe direction, since
+overstating completeness understates the space density we can claim, but ADR-0018 records
+that validating it against genuinely shallow real tiles is **required, not optional**, once
+the manifest exists.
+
+Deeper than the discovery visit cannot be simulated at all: noise can be added, not removed.
+The deep end of the axis needs real deep tiles, so the whole relation above is measured
+*downward* from a single anchor.
+
+---
+
 ## 2026-08-03 — The length grid inverts: reach now peaks near 4 arcsec, not at 16
 
 Re-measured after the profile-shape fix. **The previous version of this grid said the

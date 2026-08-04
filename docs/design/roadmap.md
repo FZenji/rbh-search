@@ -181,6 +181,19 @@ The completeness grid above is one slice, not a selection function. Still to do:
 
 Turn a working detector into a survey.
 
+- **Depth-stratified selection function** ✅ measured
+  ([ADR-0018](../adr/0018-selection-function-stratified-by-depth.md)).
+  **The wake 50% completeness limit sits 3.03 ± 0.09 mag brighter than a tile's own 5σ
+  point-source limit**, across a sixteen-fold range in exposure (r² = 0.990). Since the 5σ
+  limit is computable straight from a weight map, completeness can be predicted per tile to
+  ~0.1 mag without running injection–recovery on it — which is what makes the selection
+  function a survey product rather than a description of one visit. The generator tracks the
+  transplant to within 0.15 mag at every depth, the first evidence it is useful away from its
+  calibration point.
+  Measured by degrading real tiles, so it is an **upper bound** — photon noise only, where
+  real shallow data also carries more cosmic-ray residual and a worse effective PSF. Must be
+  validated against genuinely shallow real tiles once the manifest exists; that validation is
+  required, not optional. Deeper than the discovery visit cannot be simulated at all.
 - Manifest builder over MAST CAOM: every public drizzled extragalactic ACS/WFC, WFC3 and
   NIRCam mosaic, with S3 URIs and ETags.
 - MOC footprint union, deduplication, and the **published unique survey area**.

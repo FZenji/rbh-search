@@ -62,6 +62,7 @@ measured, a gotcha hit, an assumption disproved. Context gets compressed; the re
 | `tileio.py` | RICE-compressed FITS read/write. |
 | `diagnostics.py` | Renders every detector stage; also the seed of the Phase 5 vetting queue. |
 | `synthetic.py` | Parametric wake generator. Defaults are **fitted** to the transplant, not published values. |
+| `depth.py` | Simulates shallower data by degrading real tiles, so completeness can be measured against depth (ADR-0018). Produces an **upper bound**: photon noise only. |
 | `template.py` | Cuts the real RBH-1 out as a transplantable template (ADR-0017). |
 | `inject.py` | Adds sources to real tiles, including the `(1 − f²)σ²` noise compensation. |
 | `recovery.py` | Injection–recovery trials and completeness. |

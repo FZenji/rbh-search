@@ -35,6 +35,7 @@ rewritten**.
 | [0015](0015-no-discovery-claims.md) | Publish candidates, never discoveries | Accepted |
 | [0016](0016-rejoin-collinear-fragments.md) | Rejoin collinear fragments rather than tuning the threshold | Accepted |
 | [0017](0017-synthetic-realism.md) | Anchor synthetic realism on transplanted real pixels | Accepted |
+| [0018](0018-selection-function-stratified-by-depth.md) | Stratify the selection function by depth, measured by degrading real tiles | Accepted |
 
 ADR-0003 and ADR-0005 carry **amendments** added during Phase 1, recording where
 implementation contradicted an assumption. Amendments correct the Context and are appended
