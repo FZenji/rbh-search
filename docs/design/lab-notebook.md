@@ -29,6 +29,48 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-04 — Reading whole products is 110x faster, and we had searched 2.3 arcmin²
+
+A fair challenge: the project keeps refining details and has not searched any new sky. The
+honest accounting is worse than it sounds — **2.3 arcmin² searched in total, every tile of it
+in RBH-1's own field.** That is 0.0006 deg² against a corpus of roughly 1,600 deg².
+
+### The measurement that unblocked it
+
+Before fetching anything at scale, how much does a fetch cost? Measured against the real
+archive, at three cutout sizes from the same two products:
+
+| cutout | area | seconds | throughput |
+|---|---|---|---|
+| 200×200 | 0.03 arcmin² | 68 | 1.5 arcmin²/hr |
+| 800×800 | 0.44 | 57 | 28 arcmin²/hr |
+| 2000×2000 | 2.78 | 61 | **165 arcmin²/hr** |
+
+**The cost is per product opened, not per byte.** A 20″ cutout spends about a minute of
+network time opening two 4300×4200 mosaics and parsing their headers, then delivers a
+thirtieth of an arcminute. The same minute delivers a hundred times more sky if the read is
+big.
+
+Every cached tile in `data/` is a 20″ cutout, so every fetch so far has been the worst case
+by two orders of magnitude. Scanning reads whole products.
+
+### The corpus, after the cut
+
+150,098 extragalactic ACS/WFC products, from 183,637 before the |b| > 20° cut — so the
+Galactic plane removes 18% of the archive. That is the v1 search space, and the only
+instrument whose selection function has been measured.
+
+### Target selection is not "the first N"
+
+CAOM returns rows ordered by observation id, which clusters by proposal and therefore by
+field. Taking the first N would search one patch of sky many times over, raising the count of
+products searched while barely moving the unique area — progress that is not progress.
+`spread_over_sky` enforces a minimum separation, and **excludes RBH-1's own field explicitly**:
+finding the object the pipeline was calibrated on is not a discovery, and reporting it as one
+would be the most embarrassing available version of ADR-0015's mistake.
+
+---
+
 ## 2026-08-04 — The fixture could not say where it came from
 
 Asked what credentials the project needs, the honest way to answer was to test rather than
