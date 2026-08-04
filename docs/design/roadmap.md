@@ -225,6 +225,25 @@ Turn a working detector into a survey.
 **Gate:** a full dry-run over one deep field, restartable from an arbitrary kill, with
 bit-identical output on re-run.
 
+### Gate met
+
+Exercised for real rather than asserted: a sweep run as a subprocess and **killed with a
+signal** after 5 of 20 tiles, then restarted, against an uninterrupted run of the same tiles.
+
+| | killed and resumed | uninterrupted |
+|---|---|---|
+| tiles | 20 | 20 |
+| unique area | 2.285705046585915 arcmin² | 2.285705046585915 arcmin² |
+| median depth | 27.291206506101332 | 27.291206506101332 |
+| candidates | 5 | 5 |
+| every per-tile result | identical | |
+
+Killing a process mid-work is the failure mode that matters, and it is not the same as
+raising an exception inside a `try` block — which is all a unit test can do. Running it for
+real found two things the unit tests could not: there was no `python -m rbh` entry point, and
+`median_depth_mag` was NaN on an empty result, so **an empty run did not equal itself**. Both
+fixed; the second is the kind of wart a published data product must not have.
+
 ---
 
 ## Phase 4 — Sweep

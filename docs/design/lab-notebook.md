@@ -29,6 +29,44 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-04 — Phase 3 gate met, and two bugs only a real kill could find
+
+The gate is "a full dry-run over one deep field, restartable from an arbitrary kill, with
+bit-identical output on re-run". Exercised properly: the sweep run as a **subprocess and
+killed with a signal** after 5 of 20 tiles, then restarted, and compared against an
+uninterrupted run.
+
+| | killed and resumed | uninterrupted |
+|---|---|---|
+| tiles | 20 | 20 |
+| unique area | 2.285705046585915 arcmin² | 2.285705046585915 arcmin² |
+| median depth | 27.291206506101332 | 27.291206506101332 |
+| candidates | 5 | 5 |
+| per-tile results | identical | |
+
+**Gate met.**
+
+### Why running it for real mattered
+
+`tests/test_workqueue.py` already asserted this, and passed throughout. But a test can only
+raise an exception inside a `try` block; it cannot kill a process mid-`write`. Doing the real
+thing found two defects the tests could not:
+
+- **There was no `python -m rbh` entry point.** The first attempt invoked `python -m rbh.cli`,
+  which imports the module and exits silently, having done nothing. Every stage reported
+  "0 tiles" and the comparison of two empty results passed four of its six checks — a gate
+  that looks like it is running and is not.
+- **`median_depth_mag` was NaN when no tile had a measurable depth.** NaN never equals itself,
+  so the dataclass was non-reflexive under `==`: **an empty run did not equal itself.** Every
+  test had tiles, so nothing caught it. It is now `None`, which is both reflexive and honest
+  about being absent rather than zero.
+
+The second is worth keeping in mind beyond this project. A NaN inside an equality-compared
+value silently breaks the comparison, and the failure appears as "these two identical things
+differ" — which reads as a real problem with the data rather than with the representation.
+
+---
+
 ## 2026-08-04 — The survey products, and a quantisation bias that was not a constant
 
 The chain closes: `rbh sweep` searches tiles and commits per-tile results; `rbh survey`

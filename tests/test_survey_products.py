@@ -69,6 +69,7 @@ def test_the_products_come_only_from_committed_results(swept: Path) -> None:
     products = survey_products(swept)
     assert products.n_tiles == 3
     assert products.unique_arcmin2 > 0.0
+    assert products.median_depth_mag is not None
     assert products.median_depth_mag > 20.0
 
 

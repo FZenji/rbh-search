@@ -922,7 +922,9 @@ def survey_command(
     typer.echo(f"  summed area   {products.summed_arcmin2:8.3f} arcmin^2")
     typer.echo(f"  unique area   {products.unique_arcmin2:8.3f} arcmin^2")
     typer.echo(f"  overlap       {products.overlap_fraction:8.1%}")
-    typer.echo(f"  median depth  {products.median_depth_mag:8.2f}  (5 sigma point source)")
+    depth = products.median_depth_mag
+    shown = f"{depth:8.2f}" if depth is not None else "     n/a"
+    typer.echo(f"  median depth  {shown}  (5 sigma point source)")
 
     typer.echo("\neffective area - the denominator of a density limit:")
     unique = products.unique_arcmin2

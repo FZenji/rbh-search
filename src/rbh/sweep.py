@@ -196,7 +196,14 @@ class SurveyProducts:
     summed_arcmin2: float
     unique_arcmin2: float
     overlap_fraction: float
-    median_depth_mag: float
+    #: ``None`` rather than NaN when no tile carried a measurable depth.
+    #:
+    #: NaN never equals itself, so a NaN field makes the whole dataclass non-reflexive under
+    #: ``==``: two identical empty runs compare unequal, and "the same run does not equal
+    #: itself" is not a property a published data product should have. It went unnoticed
+    #: because every test had tiles; the Phase 3 gate exercise, run against an empty
+    #: directory by accident, is what surfaced it.
+    median_depth_mag: float | None
     #: Effective area against source magnitude - the actual denominator (ADR-0019).
     effective_area_arcmin2: tuple[tuple[float, float], ...]
     candidates: tuple[dict[str, object], ...]
@@ -277,7 +284,7 @@ def survey_products(
         # Clamped at zero: unique can exceed summed by a hair when the two are equal and
         # quantisation rounds differently, and a "-0.0% overlap" reads as a bug.
         overlap_fraction=max(0.0, 1.0 - unique / summed) if summed > 0 else 0.0,
-        median_depth_mag=float(np.median(finite_depths)) if finite_depths else float("nan"),
+        median_depth_mag=float(np.median(finite_depths)) if finite_depths else None,
         effective_area_arcmin2=tuple(
             (
                 magnitude,
