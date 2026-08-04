@@ -29,6 +29,54 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-04 — Throughput: the sweep is detect-bound, and compute is not the constraint
+
+Timed over the 20 cached tiles, single-process, splitting read from detect:
+
+| | |
+|---|---|
+| **throughput** | **0.207 deg² per core-hour** |
+| **cost** | **$0.21 per deg²** at $0.043/core-hour, egress excluded |
+| read | 14% of the time |
+| detect | 86% |
+
+**Detect-bound, so the answer to "what do we buy" is cores**, not faster storage or better
+compression. Worth knowing before anyone optimises the FITS reader.
+
+Egress is excluded because ADR-0002 puts the compute next to the data. If that ever stops
+being true this number stops being the whole cost by a wide margin — pulling tens of TB out
+of S3 costs far more than searching it.
+
+### The extrapolation is safe, and was checked rather than assumed
+
+The cached tiles are 20″ cutouts, 0.11 arcmin² each, while a production ACS mosaic is around
+a hundred times larger. If per-tile fixed costs mattered, the measured rate would understate
+production throughput. Timing detection against tile size:
+
+| side | pixels | seconds per megapixel |
+|---|---|---|
+| 256 | 65k | 2.19 |
+| 512 | 262k | 2.06 |
+| 1024 | 1.0M | 2.26 |
+| 2048 | 4.2M | 2.34 |
+
+Flat across a 64-fold range, so detection is linear in area and the small-tile rate carries
+over. The independent arithmetic agrees: 1 deg² at 0.05″/pixel is 5184 megapixels, which at
+2.2 s each is 3.2 core-hours, or 0.32 deg² per core-hour before read and morphology are added.
+
+### What it means for the survey
+
+At this rate the compute for the whole HST extragalactic corpus — of order a few hundred
+deg² — is **~1,500 core-hours and under $100**. That is not the constraint on this project,
+and it reframes what Phase 3 is for: the sweep is cheap, so the scarce resources are archive
+I/O if the compute ever moves away from the data, and human vetting time in Phase 5.
+
+Reported per *core*-hour rather than wall-hour deliberately. The sweep is embarrassingly
+parallel over tiles, so wall time is a scheduling choice; quoting it would let the pipeline
+look faster merely by adding machines.
+
+---
+
 ## 2026-08-04 — The first real sweep, and a published number that had gone stale
 
 `rbh sweep` over the 20 cached control tiles: **264 raw detections, 5 window survivors**, and

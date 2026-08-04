@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import itertools
 import math
+import time
 from dataclasses import asdict, dataclass, replace
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -806,3 +807,88 @@ def completeness_vs_depth(
                 }
             )
     return rows
+
+
+@dataclass(frozen=True)
+class ThroughputResult:
+    """What a sweep costs, in the units a survey is planned in.
+
+    Reported per *core*-hour rather than per wall-hour: the sweep is embarrassingly parallel
+    over tiles, so wall time is a scheduling choice while core time is the real resource.
+    Quoting a wall rate would make the pipeline look faster by adding machines.
+    """
+
+    n_tiles: int
+    area_deg2: float
+    read_seconds: float
+    detect_seconds: float
+    total_seconds: float
+
+    @property
+    def deg2_per_core_hour(self) -> float:
+        """Sky searched per core-hour, the number a survey plan divides into."""
+        return self.area_deg2 / (self.total_seconds / 3600.0) if self.total_seconds else 0.0
+
+    @property
+    def read_fraction(self) -> float:
+        """Share of the time spent getting pixels rather than searching them.
+
+        Decides what to buy. A read-bound sweep wants faster storage or better compression;
+        a detect-bound one wants cores. Guessing wrong here is expensive at survey scale.
+        """
+        return self.read_seconds / self.total_seconds if self.total_seconds else 0.0
+
+    def cost_per_deg2(self, usd_per_core_hour: float) -> float:
+        """Compute cost per square degree, excluding egress.
+
+        Egress is excluded because ADR-0002 puts the compute next to the data; if that ever
+        stops being true this number stops being the whole cost, by a wide margin.
+        """
+        rate = self.deg2_per_core_hour
+        return usd_per_core_hour / rate if rate > 0 else float("inf")
+
+
+def throughput_benchmark(
+    tile_paths: Sequence[Path],
+    *,
+    window: SelectionWindow | None = None,
+    repeats: int = 1,
+) -> ThroughputResult:
+    """Time the real cascade over real tiles, splitting read from detect.
+
+    Deliberately single-process: the point is the per-core rate, and measuring it under
+    parallelism would fold the machine's core count into a number meant to be independent of
+    it. The parallel speedup is already measured separately in :mod:`rbh.parallel`.
+
+    Uses wall time rather than CPU time, because numpy and scipy release the GIL and thread
+    internally - CPU time would count those threads and overstate the cost of one core's
+    worth of work.
+    """
+    # Imported here rather than at module scope: rbh.sweep imports this module for the
+    # selection window, and a top-level import would close the cycle.
+    from rbh.sweep import search_tile  # noqa: PLC0415
+
+    window = window or SelectionWindow()
+    read_seconds = detect_seconds = 0.0
+    area_deg2 = 0.0
+
+    for _ in range(repeats):
+        for path in tile_paths:
+            start = time.perf_counter()
+            tile = read_tile(path)
+            read_seconds += time.perf_counter() - start
+
+            start = time.perf_counter()
+            search_tile(tile, path.stem, window)
+            detect_seconds += time.perf_counter() - start
+
+            height, width = tile.shape
+            area_deg2 += (height * width) * (tile.pixel_scale_arcsec / 3600.0) ** 2
+
+    return ThroughputResult(
+        n_tiles=len(tile_paths) * repeats,
+        area_deg2=area_deg2,
+        read_seconds=read_seconds,
+        detect_seconds=detect_seconds,
+        total_seconds=read_seconds + detect_seconds,
+    )

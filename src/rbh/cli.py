@@ -835,3 +835,55 @@ def sweep_command(
             fg=typer.colors.YELLOW,
         )
     typer.echo(json.dumps({"summary": totals["n_tiles"], "results_in": str(out)}))
+
+
+@app.command("benchmark")
+def benchmark_command(
+    tiles: Annotated[
+        Path, typer.Option(help="Directory of cached tiles to time the cascade over.")
+    ] = Path("data/controls"),
+    usd_per_core_hour: Annotated[
+        float,
+        typer.Option(
+            help="Compute price. Default is roughly one on-demand vCPU-hour on a "
+            "general-purpose AWS instance in us-east-1, where the MAST bucket lives."
+        ),
+    ] = 0.043,
+    repeats: Annotated[int, typer.Option(help="Passes over the tile set.")] = 2,
+) -> None:
+    """Measure sweep throughput in deg^2 per core-hour and $ per deg^2.
+
+    Per *core*-hour, not wall-hour: the sweep is embarrassingly parallel over tiles, so wall
+    time is a scheduling choice while core time is the real resource. A wall rate would make
+    the pipeline look faster simply by adding machines.
+
+    Egress is excluded because ADR-0002 puts the compute next to the data. If that stops
+    being true, this stops being the whole cost by a wide margin.
+    """
+    from rbh.studies import throughput_benchmark
+
+    paths = sorted(tiles.glob("*.fits"))
+    if not paths:
+        typer.echo(f"no tiles in {tiles}", err=True)
+        raise typer.Exit(1)
+
+    result = throughput_benchmark(paths, repeats=repeats)
+    typer.echo(
+        f"{result.n_tiles} tile-passes over {len(paths)} tiles, "
+        f"{result.area_deg2 * 3600:.2f} arcmin^2 of sky"
+    )
+    typer.echo(
+        f"  read {result.read_seconds:6.2f} s ({result.read_fraction:.0%})   "
+        f"detect {result.detect_seconds:6.2f} s   total {result.total_seconds:6.2f} s"
+    )
+    typer.echo(f"\n  {result.deg2_per_core_hour:.3f} deg^2 per core-hour")
+    typer.echo(
+        f"  ${result.cost_per_deg2(usd_per_core_hour):.2f} per deg^2 "
+        f"at ${usd_per_core_hour}/core-hour, excluding egress"
+    )
+    verdict = (
+        "detect-bound: buy cores"
+        if result.read_fraction < 0.4
+        else ("read-bound: buy faster storage or better compression")
+    )
+    typer.echo(f"  {verdict}")

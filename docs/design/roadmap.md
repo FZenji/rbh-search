@@ -206,7 +206,12 @@ Turn a working detector into a survey.
   NIRCam mosaic, with S3 URIs and ETags.
 - MOC footprint union, deduplication, and the **published unique survey area**.
 - Tiling, work queue, claim–process–commit, resumability.
-- Throughput and cost benchmark, reported in **deg² per core-hour** and **$ per deg²**.
+- Throughput and cost benchmark ✅ measured: **0.207 deg² per core-hour, $0.21 per deg²**
+  at $0.043/core-hour with egress excluded, and **86% detect-bound** — so the lever is cores,
+  not storage. Detection is linear in area (2.2 s per megapixel, flat across a 64× range), so
+  the rate measured on 20″ cutouts carries to production mosaics. At this rate the whole HST
+  extragalactic corpus is of order **1,500 core-hours and under $100**: compute is not the
+  constraint on this project.
 - Deploy on the Fornax Science Console.
 
 **Gate:** a full dry-run over one deep field, restartable from an arbitrary kill, with
