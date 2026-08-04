@@ -21,14 +21,21 @@ depends on how deep it was.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import numpy as np
+from mocpy import MOC
+
 from rbh import __version__
+from rbh.area import SkyPatch, completeness_at
 from rbh.config import SelectionWindow
 from rbh.depth import depth_of
+from rbh.footprint import area_arcmin2, region_footprint, tile_region
 from rbh.morphology import measure
 from rbh.pipeline import detect_in_tile
+from rbh.reference import WAKE_LIMIT_BELOW_POINT_SOURCE_MAG
 from rbh.tileio import read_tile
 from rbh.workqueue import WorkUnit, merge, run_sweep
 
@@ -126,6 +133,11 @@ def search_tile(tile: Tile, tile_id: str, window: SelectionWindow) -> dict[str, 
         "n_survivors": len(survivors),
         "depth_mag": depth_of(tile),
         "filters": list(tile.filter_names),
+        # The tile's own exact footprint, so the survey area is computable from committed
+        # results alone - no manifest, no archive query, and as deterministic and resumable
+        # as the sweep itself. It also means a tile that found nothing still contributes its
+        # area, which is the half of the denominator a catalogue of survivors cannot supply.
+        "s_region": tile_region(tile.wcs, tile.shape),
         "survivors": survivors,
     }
 
@@ -157,3 +169,128 @@ def summarise(output_dir: Path) -> dict[str, object]:
         "n_survivors": sum(int(r["n_survivors"]) for r in rows),  # type: ignore[call-overload]
         "tiles": [str(r["tile_id"]) for r in rows],
     }
+
+
+def _depth_of_row(row: dict[str, object]) -> float:
+    """Bluest-band limiting magnitude for a swept tile.
+
+    The bluer band is the one the selection function was measured in, and it is the shallower
+    of the ACS pair, so taking it is the conservative choice as well as the consistent one.
+    """
+    depths = row.get("depth_mag")
+    if not isinstance(depths, dict) or not depths:
+        return float("nan")
+    return float(min(depths.values()))
+
+
+@dataclass(frozen=True)
+class SurveyProducts:
+    """The numbers a paper divides by, derived from committed sweep results.
+
+    A dataclass rather than a dictionary because every consumer was casting fields out of
+    ``object`` to use them, which is the type system pointing out that the shape is known and
+    should be declared.
+    """
+
+    n_tiles: int
+    summed_arcmin2: float
+    unique_arcmin2: float
+    overlap_fraction: float
+    median_depth_mag: float
+    #: Effective area against source magnitude - the actual denominator (ADR-0019).
+    effective_area_arcmin2: tuple[tuple[float, float], ...]
+    candidates: tuple[dict[str, object], ...]
+
+    @property
+    def n_candidates(self) -> int:
+        """Count of window survivors. **Candidates, never discoveries** (ADR-0015)."""
+        return len(self.candidates)
+
+    def to_dict(self) -> dict[str, object]:
+        """JSON-serialisable form, for the published data product."""
+        return {
+            "n_tiles": self.n_tiles,
+            "summed_arcmin2": self.summed_arcmin2,
+            "unique_arcmin2": self.unique_arcmin2,
+            "overlap_fraction": self.overlap_fraction,
+            "median_depth_mag": self.median_depth_mag,
+            "effective_area_arcmin2": [
+                {"mag": mag, "arcmin2": area} for mag, area in self.effective_area_arcmin2
+            ],
+            "n_candidates": self.n_candidates,
+            "candidates": list(self.candidates),
+        }
+
+
+def survey_products(
+    output_dir: Path, magnitudes: Sequence[float] = (23.0, 23.5, 24.0, 24.5, 25.0)
+) -> SurveyProducts:
+    """Turn committed sweep results into the numbers a paper divides by.
+
+    Everything here comes from the per-tile outputs and nothing else: the footprint each tile
+    recorded, the depth it measured, and the candidates it found. That is deliberate. It
+    means the published area is exactly as reproducible as the sweep (ADR-0020), it cannot
+    drift from what was actually searched, and re-deriving it needs no archive access.
+
+    Reports **raw, unique and effective** area together (ADR-0019). Unique area is what was
+    searched; effective area is what was searched *usefully* at a given source brightness,
+    and it is the denominator of a density limit. The gap between them is the selection
+    function doing its job, and quoting only one of the three hides it.
+    """
+    rows = merge(output_dir)
+    regions = [str(r.get("s_region", "")) for r in rows]
+    depths = [_depth_of_row(r) for r in rows]
+
+    patches: list[SkyPatch] = []
+    claimed: MOC | None = None
+    summed = 0.0
+    # Deepest first, so overlapping sky is credited once to the coverage that searched it
+    # best - the same rule the manifest-level accounting uses.
+    for depth, region in sorted(zip(depths, regions, strict=True), key=lambda pair: -pair[0]):
+        moc = region_footprint(region)
+        if moc is None or not math.isfinite(depth):
+            continue
+        summed += area_arcmin2(moc)
+        fresh = moc if claimed is None else moc.difference(claimed)
+        gained = area_arcmin2(fresh)
+        if gained > 0:
+            patches.append(SkyPatch(area_arcmin2=gained, point_source_limit_mag=depth))
+        claimed = moc if claimed is None else claimed.union(moc)
+
+    unique = area_arcmin2(claimed) if claimed is not None else 0.0
+    candidates: list[dict[str, object]] = []
+    for row in rows:
+        survivors = row.get("survivors")
+        if not isinstance(survivors, list):
+            continue
+        candidates.extend(
+            {"tile_id": str(row["tile_id"]), **entry}
+            for entry in survivors
+            if isinstance(entry, dict)
+        )
+
+    finite_depths = [d for d in depths if math.isfinite(d)]
+    return SurveyProducts(
+        n_tiles=len(rows),
+        summed_arcmin2=summed,
+        unique_arcmin2=unique,
+        # Clamped at zero: unique can exceed summed by a hair when the two are equal and
+        # quantisation rounds differently, and a "-0.0% overlap" reads as a bug.
+        overlap_fraction=max(0.0, 1.0 - unique / summed) if summed > 0 else 0.0,
+        median_depth_mag=float(np.median(finite_depths)) if finite_depths else float("nan"),
+        effective_area_arcmin2=tuple(
+            (
+                magnitude,
+                sum(
+                    p.area_arcmin2
+                    * completeness_at(
+                        magnitude,
+                        p.point_source_limit_mag - WAKE_LIMIT_BELOW_POINT_SOURCE_MAG,
+                    )
+                    for p in patches
+                ),
+            )
+            for magnitude in magnitudes
+        ),
+        candidates=tuple(candidates),
+    )

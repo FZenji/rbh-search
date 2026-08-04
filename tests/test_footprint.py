@@ -11,12 +11,13 @@ import pytest
 
 from rbh.footprint import (
     ARCMIN2_PER_DEG2,
-    QUANTISATION_BIAS,
+    TARGET_BIAS,
     account,
     area_arcmin2,
     circular_footprint,
     deepest_patches,
     effective_area_curve,
+    order_for,
     survey_footprint,
     union,
 )
@@ -51,26 +52,32 @@ def test_a_footprint_has_roughly_the_area_asked_for() -> None:
     assert area_arcmin2(moc) == pytest.approx(11.0, rel=0.05)
 
 
-def test_the_quantisation_bias_stays_within_what_is_documented() -> None:
-    """A MOC over-covers a shape's boundary, and the survey area is a denominator.
+@pytest.mark.parametrize("area", [0.05, 0.11, 1.0, 11.0, 40.0, 200.0])
+def test_the_bias_stays_bounded_across_four_orders_of_footprint_size(area: float) -> None:
+    """The bias scales as perimeter over area, so it must be tested across sizes.
 
-    The first version of this module used order 14 on the reasoning that 13 arcsec cells are
-    much finer than an 11 arcmin^2 product. That is true and it over-counts by 14%. The order
-    is now chosen by measurement, and this test fails if anyone lowers it back for speed.
+    A fixed order was chosen from a single 11 arcmin^2 measurement and documented as a 1%
+    systematic. On a 0.11 arcmin^2 tile - the size the sweep actually works in - the same
+    order over-counts by 12%. The tests at the time used only the large footprint and passed
+    throughout, which is why this one is parametrised over four orders of magnitude.
     """
-    for area in (5.0, 11.0, 40.0):
-        got = area_arcmin2(circular_footprint(40.0, -8.0, area))
-        excess = got / area - 1.0
-        assert excess >= -1e-6, "quantisation can only ever over-cover, never under-cover"
-        assert excess <= 2 * QUANTISATION_BIAS, (
-            f"a {area} arcmin^2 footprint over-counts by {100 * excess:.1f}%, "
-            f"above the documented {100 * QUANTISATION_BIAS:.0f}%"
-        )
+    got = area_arcmin2(circular_footprint(40.0, -8.0, area))
+    excess = got / area - 1.0
+    assert excess >= -1e-6, "quantisation can only ever over-cover, never under-cover"
+    assert excess <= 2 * TARGET_BIAS, (
+        f"a {area} arcmin^2 footprint over-counts by {100 * excess:.1f}%, "
+        f"above the {100 * TARGET_BIAS:.0f}% target"
+    )
+
+
+def test_smaller_footprints_get_finer_orders() -> None:
+    """The whole point of choosing per footprint rather than once."""
+    assert order_for(0.11) > order_for(11.0) > order_for(1000.0)
 
 
 @pytest.mark.parametrize(("order", "worst"), [(14, 0.20), (18, 0.02)])
-def test_finer_orders_are_measurably_better(order: int, worst: float) -> None:
-    """Records the trade-off in an executable form, so the constant is not folklore."""
+def test_an_explicit_order_is_still_honoured(order: int, worst: float) -> None:
+    """Callers can pin the order, which is what makes the bias table above reproducible."""
     got = area_arcmin2(circular_footprint(40.0, -8.0, 11.0, order=order))
     assert 0.0 <= got / 11.0 - 1.0 <= worst
 

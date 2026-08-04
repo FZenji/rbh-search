@@ -887,3 +887,52 @@ def benchmark_command(
         else ("read-bound: buy faster storage or better compression")
     )
     typer.echo(f"  {verdict}")
+
+
+@app.command("survey")
+def survey_command(
+    results: Annotated[
+        Path, typer.Option(help="Directory of committed per-tile sweep results.")
+    ] = Path("runs/sweep"),
+    out: Annotated[Path, typer.Option(help="Where to write the survey products.")] = Path(
+        "runs/survey.json"
+    ),
+) -> None:
+    """Derive the survey's published numbers from committed sweep results.
+
+    Everything comes from the per-tile outputs and nothing else - the footprint each tile
+    recorded, the depth it measured, the candidates it found. No manifest, no archive query.
+    The published area is therefore exactly as reproducible as the sweep (ADR-0020) and
+    cannot drift from the sky the detector actually saw.
+
+    Reports raw, unique and effective area together (ADR-0019). The gap between unique and
+    effective is the selection function doing its job, and quoting one without the others
+    hides it.
+    """
+    import json
+
+    from rbh.sweep import survey_products
+
+    products = survey_products(results)
+    if not products.n_tiles:
+        typer.echo(f"no committed results in {results}", err=True)
+        raise typer.Exit(1)
+
+    typer.echo(f"{products.n_tiles} tiles searched")
+    typer.echo(f"  summed area   {products.summed_arcmin2:8.3f} arcmin^2")
+    typer.echo(f"  unique area   {products.unique_arcmin2:8.3f} arcmin^2")
+    typer.echo(f"  overlap       {products.overlap_fraction:8.1%}")
+    typer.echo(f"  median depth  {products.median_depth_mag:8.2f}  (5 sigma point source)")
+
+    typer.echo("\neffective area - the denominator of a density limit:")
+    unique = products.unique_arcmin2
+    for magnitude, area in products.effective_area_arcmin2:
+        share = area / unique if unique else 0.0
+        typer.echo(f"  mag {magnitude:.1f}   {area:8.3f} arcmin^2   {share:6.1%} of unique")
+
+    typer.echo(f"\n{products.n_candidates} candidates passed the selection window")
+    typer.secho("Candidates, not discoveries (ADR-0015).", fg=typer.colors.YELLOW)
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(products.to_dict(), indent=1, sort_keys=True), encoding="utf-8")
+    typer.echo(f"wrote {out}")

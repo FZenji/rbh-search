@@ -13,6 +13,7 @@ without the shallower one losing the rest of its own.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -27,37 +28,70 @@ from rbh.reference import WAKE_LIMIT_BELOW_POINT_SOURCE_MAG
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
-#: HEALPix order for footprints, **chosen by measuring the bias rather than by reasoning
-#: about cell sizes**. A MOC covers a shape with whole cells, so the boundary is always
-#: over-covered, and for an 11 arcmin^2 product that boundary is a large fraction of the
-#: shape. Measured over-count for a disc of that size:
+    from astropy.wcs import WCS
+
+#: Order used for the first, throwaway parse of a region - just fine enough to measure how
+#: big the footprint is, so :func:`order_for` can choose the real one. Measured over-count on
+#: an 11 arcmin^2 disc, which is where the fixed-order approach came from and why it was
+#: wrong:
 #:
-#: ===== ========== ========
+#: ===== ========== ==========
 #: order cell size  over-count
-#: ===== ========== ========
+#: ===== ========== ==========
 #: 12    51.5"      +88%
 #: 14    12.9"      +13.7%
 #: 16    3.2"       +3.9%
 #: 17    1.6"       +2.0%
 #: 18    0.8"       +1.0%
-#: ===== ========== ========
+#: ===== ========== ==========
 #:
-#: The first draft of this module used 14 on the reasoning that 13 arcsec cells are "much
-#: finer than an 11 arcmin^2 product", which sounds right and inflates every survey area by
-#: a seventh. Order 18 costs a millisecond per footprint and leaves a **+1% one-sided
-#: systematic**, which is small enough to state and carry rather than chase further, since
-#: the circular-footprint approximation below is a larger error than that.
+#: Every row of that table is true only for an 11 arcmin^2 footprint. See :func:`order_for`.
 DEFAULT_ORDER = 18
 
-#: Measured over-count at :data:`DEFAULT_ORDER`, for reporting alongside any area.
-QUANTISATION_BIAS = 0.01
+#: Target relative over-count. The order is chosen per footprint to stay under this.
+TARGET_BIAS = 0.02
+
+#: Finest order mocpy accepts. Reaching it means the footprint is smaller than the
+#: quantisation can resolve at the requested accuracy, which is worth knowing rather than
+#: silently accepting.
+MAX_ORDER = 29
+
+
+def order_for(area_arcmin2_: float, target_bias: float = TARGET_BIAS) -> int:
+    """Choose a HEALPix order so a footprint of this size quantises to within ``target_bias``.
+
+    **The bias is not a constant, and treating it as one is how this went wrong.** A MOC
+    over-covers a shape's boundary, so the error scales as perimeter over area - which means
+    it depends on the footprint's *size*, not just on the cell size. Measured on a disc:
+
+    * 11 arcmin^2 at order 18 -> +1.0%
+    * 0.11 arcmin^2 at order 18 -> **+12%**
+
+    Both were "0.8 arcsec cells", and the first was measured, documented as the bias, and
+    used to justify a fixed order. The second is a 20 arcsec tile, which is exactly the size
+    the sweep works in. A test using only the large footprint passed throughout.
+
+    For a roughly square footprint of side ``s`` and cell size ``c`` the fractional
+    over-count is about ``2c/s``, so the order needed grows as the footprint shrinks. This
+    solves for it and clamps to :data:`MAX_ORDER`.
+    """
+    side_arcsec = math.sqrt(max(area_arcmin2_, 1e-9)) * 60.0
+    wanted_cell_arcsec = 0.5 * max(target_bias, 1e-6) * side_arcsec
+    whole_sky_arcsec2 = 4.0 * math.pi * (180.0 * 3600.0 / math.pi) ** 2
+
+    for order in range(4, MAX_ORDER + 1):
+        cell_arcsec = math.sqrt(whole_sky_arcsec2 / (12 * 4**order))
+        if cell_arcsec <= wanted_cell_arcsec:
+            return order
+    return MAX_ORDER
+
 
 #: Square arcminutes in a square degree, for reporting.
 ARCMIN2_PER_DEG2 = 3600.0
 
 
 def circular_footprint(
-    ra_deg: float, dec_deg: float, area_arcmin2: float, order: int = DEFAULT_ORDER
+    ra_deg: float, dec_deg: float, area_arcmin2: float, order: int | None = None
 ) -> MOC:
     """Approximate a product's footprint as a disc of the right area.
 
@@ -72,11 +106,12 @@ def circular_footprint(
     ``MOC.from_polygon_skycoord`` takes them directly - and treat any overlap number computed
     before then as indicative.
     """
+    depth = order_for(area_arcmin2) if order is None else order
     radius = np.sqrt(max(area_arcmin2, 0.0) / np.pi) * u.arcmin
-    return MOC.from_cone(lon=ra_deg * u.deg, lat=dec_deg * u.deg, radius=radius, max_depth=order)
+    return MOC.from_cone(lon=ra_deg * u.deg, lat=dec_deg * u.deg, radius=radius, max_depth=depth)
 
 
-def region_footprint(s_region: str, order: int = DEFAULT_ORDER) -> MOC | None:
+def region_footprint(s_region: str, order: int | None = None) -> MOC | None:
     """Parse a CAOM ``s_region`` STC-S string into a MOC, or None if it cannot be used.
 
     This is the footprint the archive actually recorded - usually a polygon tracing the
@@ -92,12 +127,26 @@ def region_footprint(s_region: str, order: int = DEFAULT_ORDER) -> MOC | None:
     if not s_region or not s_region.strip():
         return None
     try:
+        coarse = MOC.from_stcs(s_region.strip(), max_depth=DEFAULT_ORDER)
+    except (ValueError, TypeError, RuntimeError):
+        return None
+    if order is not None:
+        return _reparse(s_region, order) or coarse
+    # Re-parse at an order chosen from the footprint's own size. One coarse pass is needed
+    # first because the size is not known until the region has been read once, and the bias
+    # at DEFAULT_ORDER is small enough that it does not mislead the choice.
+    refined = _reparse(s_region, order_for(area_arcmin2(coarse)))
+    return refined or coarse
+
+
+def _reparse(s_region: str, order: int) -> MOC | None:
+    try:
         return MOC.from_stcs(s_region.strip(), max_depth=order)
     except (ValueError, TypeError, RuntimeError):
         return None
 
 
-def product_footprint(product: Product, order: int = DEFAULT_ORDER) -> MOC:
+def product_footprint(product: Product, order: int | None = None) -> MOC:
     """Best available footprint for a product: its real region if it has one, else a disc."""
     return region_footprint(product.s_region, order) or circular_footprint(
         product.ra_deg, product.dec_deg, product.area_arcmin2, order
@@ -117,6 +166,24 @@ def region_coverage(products: Sequence[Product]) -> float:
     return with_region / len(products)
 
 
+def tile_region(wcs: WCS, shape: Sequence[int]) -> str:
+    """Exact STC-S footprint of a tile, from its own WCS corners.
+
+    Unlike everything else in this module this is not an approximation: a tile is a rectangle
+    on a known projection, so its corners are exactly where the WCS says they are. Recording
+    it in the sweep's per-tile result makes the survey footprint computable from committed
+    outputs alone, with no manifest and no archive query - which is what lets the published
+    area be as resumable and deterministic as the sweep itself (ADR-0020).
+
+    Corners are traced in order rather than as a bounding box, so a rotated tile stays a
+    rotated rectangle instead of growing to the box that contains it.
+    """
+    height, width = int(shape[0]), int(shape[1])
+    corners = [(0, 0), (width, 0), (width, height), (0, height)]
+    sky = [wcs.pixel_to_world(float(x), float(y)) for x, y in corners]
+    return "POLYGON " + " ".join(f"{p.ra.deg:.8f} {p.dec.deg:.8f}" for p in sky)
+
+
 def union(mocs: Iterable[MOC]) -> MOC:
     """Combine any number of footprints. Empty input gives an empty MOC, not an error."""
     result: MOC | None = None
@@ -130,7 +197,7 @@ def area_arcmin2(moc: MOC) -> float:
     return float(moc.sky_fraction * 4.0 * np.pi * (180.0 / np.pi) ** 2 * ARCMIN2_PER_DEG2)
 
 
-def survey_footprint(products: Sequence[Product], order: int = DEFAULT_ORDER) -> MOC:
+def survey_footprint(products: Sequence[Product], order: int | None = None) -> MOC:
     """Return the union footprint of a manifest: every product's sky, counted once."""
     return union(product_footprint(p, order) for p in products)
 
@@ -160,7 +227,7 @@ class AreaAccounting:
         return self.unique_arcmin2 / ARCMIN2_PER_DEG2
 
 
-def account(products: Sequence[Product], order: int = DEFAULT_ORDER) -> AreaAccounting:
+def account(products: Sequence[Product], order: int | None = None) -> AreaAccounting:
     """Compute summed and unique area for a manifest."""
     return AreaAccounting(
         summed_arcmin2=sum(p.area_arcmin2 for p in products),
@@ -168,7 +235,7 @@ def account(products: Sequence[Product], order: int = DEFAULT_ORDER) -> AreaAcco
     )
 
 
-def deepest_patches(products: Sequence[Product], order: int = DEFAULT_ORDER) -> list[SkyPatch]:
+def deepest_patches(products: Sequence[Product], order: int | None = None) -> list[SkyPatch]:
     """Resolve overlaps in favour of the deepest coverage, cell by cell (ADR-0019).
 
     Products are taken deepest first, and each one claims only the sky no deeper product has
@@ -203,7 +270,7 @@ def deepest_patches(products: Sequence[Product], order: int = DEFAULT_ORDER) -> 
 def effective_area_curve(
     products: Sequence[Product],
     magnitudes: Sequence[float],
-    order: int = DEFAULT_ORDER,
+    order: int | None = None,
 ) -> list[tuple[float, float]]:
     """Return the survey denominator against source magnitude, overlaps resolved (ADR-0019).
 

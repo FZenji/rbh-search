@@ -208,7 +208,11 @@ Turn a working detector into a survey.
   summed coverage before deduplication and the latitude cut. Discovery, the Galactic-latitude
   filter and `s_region` footprints are in; ETags and measured depths still need attaching
   per product.
-- MOC footprint union, deduplication, and the **published unique survey area**.
+- MOC footprint union, deduplication, and the **published unique survey area** ✅. `rbh survey`
+  derives unique and effective area, median depth and the candidate list from committed sweep
+  results alone — no manifest, no archive query — so the published area is as reproducible as
+  the sweep. Footprints are exact per tile (WCS corners) and the MOC order is chosen per
+  footprint, after a fixed order was found to over-count small tiles by 12%.
 - Tiling, work queue, claim–process–commit, resumability.
 - Throughput and cost benchmark ✅ measured: **0.207 deg² per core-hour, $0.21 per deg²**
   at $0.043/core-hour with egress excluded, and **86% detect-bound** — so the lever is cores,

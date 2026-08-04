@@ -29,6 +29,68 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-04 — The survey products, and a quantisation bias that was not a constant
+
+The chain closes: `rbh sweep` searches tiles and commits per-tile results; `rbh survey`
+derives the published numbers from **those results and nothing else** — no manifest, no
+archive query. That is deliberate. It means the published area is exactly as reproducible as
+the sweep (ADR-0020) and cannot drift from the sky the detector actually saw.
+
+Each tile now records its own **exact** footprint, traced from its WCS corners. Unlike
+everything else in the area machinery that is not an approximation: a tile is a rectangle on
+a known projection. It also means a tile that found nothing still contributes its area, which
+is the half of the denominator a catalogue of survivors can never supply.
+
+Over the 20 cached tiles:
+
+| | |
+|---|---|
+| unique area | 2.286 arcmin² |
+| median depth | 27.29 (5σ point source) |
+| candidates | 5 |
+
+| source magnitude | effective area | share of unique |
+|---|---|---|
+| 23.0 | 2.166 arcmin² | 94.8% |
+| 23.5 | 2.118 | 92.6% |
+| 24.0 | 1.716 | 75.1% |
+| 24.5 | 0.586 | 25.7% |
+| 25.0 | 0.075 | 3.3% |
+
+That table is the selection function made visible. The same sky is worth 95% of its area for
+a bright wake and 3% for a faint one, and a density limit that divided by raw area at
+magnitude 25 would be wrong by a factor of thirty.
+
+### The bias I documented was true for exactly one footprint size
+
+Yesterday's entry recorded a **+1% one-sided systematic** from MOC quantisation and used it
+to justify a fixed HEALPix order. That measurement was real, and it was taken on an
+11 arcmin² product.
+
+A MOC over-covers a shape's *boundary*, so the error scales as perimeter over area — it
+depends on how big the footprint is, not just on the cell size. On the 0.11 arcmin² tiles the
+sweep actually works in, the same order over-counts by **+12%**.
+
+Every test I had written used the large footprint, so they all passed.
+
+It surfaced only because a new test compared a tile's MOC area against the area its own WCS
+implies, and the numbers were 12% apart. The order is now chosen per footprint from its
+size — `order_for` solves the ~2c/s relation for a target bias — and the bias test is
+parametrised over four orders of magnitude in area rather than one value.
+
+**The correction changed a reported number.** With the fixed coarse order the 20 tiles showed
+a **5.2% overlap**; with the size-aware order it is **0%**. That overlap was entirely
+quantisation — coarse cells made adjacent, non-overlapping tiles appear to share boundary
+cells. A number that would have been quoted as "the corpus repeats itself by 5%" was an
+artifact of the grid it was measured on.
+
+The general form is worth keeping: **a systematic measured at one scale is not a constant
+until it has been measured at another.** The first measurement was careful, honest and
+useless outside the regime it was taken in, and the docstring that recorded it made it sound
+general.
+
+---
+
 ## 2026-08-04 — The corpus, measured: 533,000 products, and a typo that deleted JWST
 
 First real CAOM queries. The numbers ADR-0001 has been describing in words:
