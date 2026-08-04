@@ -29,6 +29,49 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-04 — The fixture could not say where it came from
+
+Asked what credentials the project needs, the honest way to answer was to test rather than
+reason. The test found something else.
+
+**Nothing needs credentials.** Anonymous byte-range reads from `s3://stpubdata` work — a
+200×200 two-band cutout in 51 s — and the CAOM query endpoint needs no account. That is
+ADR-0002 working as designed: the public bucket is public.
+
+But `fetch_tile` failed on the first attempt with `Attempt to open non key-like path: stp`.
+
+### The artifact was stale, not the code
+
+The fixture's `SRCURI` card read:
+
+```
+s3://stpubdata/hst/public/jety/jety02010/jety02010_drc.fits;s3://stp
+```
+
+Exactly 68 characters — a single FITS card's value limit. The second URI was cut off.
+
+The *writer* has been correct for weeks: astropy applies the CONTINUE convention for longer
+strings, an earlier version truncated instead, and there is a round-trip test covering it.
+The lab notebook already records that bug as found and fixed. **What nobody checked was the
+artifact written before the fix**, which kept the truncated value and sailed through every
+test since.
+
+It was not harmless. `_resolve_uris` filters to URIs ending `.fits`, so `s3://stp` was
+silently dropped and the fixture resolved to **one** product for a **two**-filter tile. Any
+tile fetched that way would have been single-filter — tier B instead of tier A
+([ADR-0006](../adr/0006-two-tier-filter-requirement.md)) — with nothing raised.
+
+Repaired in place: header card only, pixel data untouched, and the litmus test's nine
+assertions are unchanged. The missing product is `jety02020_drc.fits`, recovered from MAST.
+
+**The lesson is about what a test covers.** A round-trip test proves the writer round-trips.
+It says nothing about artifacts already on disk, and a fixture is exactly the kind of thing
+that gets written once and then trusted forever. `tests/test_fixture_provenance.py` now
+asserts the *artifact*: one usable URI per band, a value too long to fit in one card, and
+every URI a drizzled MAST product.
+
+---
+
 ## 2026-08-04 — Phase 3 gate met, and two bugs only a real kill could find
 
 The gate is "a full dry-run over one deep field, restartable from an arbitrary kill, with
