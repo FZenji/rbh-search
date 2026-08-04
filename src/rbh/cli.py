@@ -776,3 +776,62 @@ def completeness_depth(
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({"rows": rows}, indent=1), encoding="utf-8")
     typer.echo(f"\nwrote {out}")
+
+
+@app.command("sweep")
+def sweep_command(
+    tiles: Annotated[Path, typer.Option(help="Directory of cached tiles to search.")] = Path(
+        "data/destinations"
+    ),
+    out: Annotated[
+        Path, typer.Option(help="Directory for per-tile results; also the queue (ADR-0020).")
+    ] = Path("runs/sweep"),
+    clean_partials: Annotated[
+        bool, typer.Option(help="Delete leftover temporary files from killed workers first.")
+    ] = True,
+) -> None:
+    """Search every tile, resumably. Killing this and re-running it is safe by design.
+
+    A tile is complete if and only if its result file exists, so resume needs no recovery
+    logic and no separate queue state (ADR-0020). Re-running after a settings change
+    recomputes rather than reusing stale results, because the work-unit identity includes the
+    config fingerprint.
+    """
+    import json
+
+    from rbh.sweep import local_sources, run, summarise
+    from rbh.workqueue import sweep_partial_files
+
+    settings = Settings()
+    sources = local_sources(tiles)
+    if not sources:
+        typer.echo(f"no tiles in {tiles}", err=True)
+        raise typer.Exit(1)
+
+    if clean_partials:
+        removed = sweep_partial_files(out)
+        if removed:
+            typer.echo(f"cleared {removed} leftover partial file(s) from a previous kill")
+
+    typer.echo(f"{len(sources)} tiles; config fingerprint {settings.fingerprint()[:12]}")
+    report = run(sources, out, config_fingerprint=settings.fingerprint())
+
+    typer.echo(
+        f"searched {report.completed}, skipped {report.skipped} already done, "
+        f"{len(report.failed)} failed"
+    )
+    for tile_id, error in report.failed:
+        typer.secho(f"  FAILED {tile_id}: {error}", fg=typer.colors.RED)
+
+    totals = summarise(out)
+    typer.echo(
+        f"\n{totals['n_tiles']} tiles committed, {totals['n_detections']} raw detections, "
+        f"{totals['n_survivors']} passed the selection window"
+    )
+    if report.failed:
+        typer.secho(
+            "Failed tiles are retried on the next run. They are not silently skipped: a hole "
+            "in the footprint is a hole in the denominator (ADR-0019).",
+            fg=typer.colors.YELLOW,
+        )
+    typer.echo(json.dumps({"summary": totals["n_tiles"], "results_in": str(out)}))

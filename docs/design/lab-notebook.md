@@ -29,6 +29,54 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-04 — The first real sweep, and a published number that had gone stale
+
+`rbh sweep` over the 20 cached control tiles: **264 raw detections, 5 window survivors**, and
+re-running it searches nothing and skips all 20 — the Phase 3 gate, working on real sky
+rather than in a test.
+
+One of those five is **the real RBH-1**, in `dest_000`: 5.50″ long, axis ratio 21.4, and 5.5″
+from the published coordinate, which is exactly the host-galaxy offset Phase 1 established.
+So the sweep independently reproduces the litmus result through a completely different code
+path, which is worth more than the test that asserts it.
+
+### The number that had drifted
+
+That leaves **4 spurious survivors over the 19 non-RBH-1 tiles**, where the roadmap records
+**5**. Small, and exactly the kind of discrepancy that gets waved through as noise.
+
+It is not noise, and chasing it was worth it. Both current code paths — `rbh.controls` and
+the new sweep — agree on 4, so the sweep is right and the record was stale. Checking out the
+commit that recorded the 5 and re-running it there gives 5, with survivors in dest_008,
+**dest_013**, dest_015, dest_016, dest_018. Today dest_013 is gone.
+
+The first suspect was wrong. A refactor of `_measure_width` had changed the degenerate case
+from returning a width of exactly 0 — which passes both the width and axis-ratio cuts for
+free — to a second-moment fallback. Plausible, and restoring the old behaviour changes
+nothing.
+
+The actual cause is `BandImage.background_and_sigma`. The Phase 2 fix restricted the sigma
+measurement to pixels near the *median weight*; before it, sigma was measured across the
+whole band and so averaged over the weight distribution. That was recorded at the time as
+worth under 7% on real archival tiles, and it was fixed because it was free to get right.
+
+**A sub-7% change in the noise normalisation removed 20% of the spurious survivors.**
+
+Every threshold in the detector is denominated in that sigma, so it moves the signal-to-noise
+of every pixel at once, and dest_013's candidate was sitting close enough to the line to be
+pushed across it. The direction is right — the tighter estimate is the correct one — but the
+sensitivity is the finding:
+
+**The window-survivor count is far more sensitive to the noise normalisation than to anything
+else measured so far.** Phase 4's gate is a false-positive rate per square degree, and that
+number now has to be quoted with the normalisation it was computed under. A detector change
+nobody would think of as affecting purity moved it by a fifth.
+
+It also justifies a habit: the roadmap's numbers are not annotations, they are claims, and
+this one had quietly stopped being true four commits ago. Corrected there.
+
+---
+
 ## 2026-08-04 — Phase 3 opens: the wake limit tracks a tile's own depth to 0.09 mag
 
 Every completeness number this project quotes was conditional on one visit's depth, while

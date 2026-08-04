@@ -105,10 +105,18 @@ window. Recording the two separately was therefore necessary, not pedantic.
 ### Negative controls: done, and they cost us something
 
 Over 19 non-overlapping archival tiles (2.11 arcmin², RBH-1's own field excluded), window
-survivors went **1 → 5** with fragment linking enabled — five-fold, +4. That settles the debt
+survivors went **1 → 4** with fragment linking enabled — four-fold, +3. That settles the debt
 [ADR-0016](../adr/0016-rejoin-collinear-fragments.md) left open, and the mechanism is not the
 one it guessed: over 33 arcmin² of **pure noise** linking added exactly zero (noise false
 positives < ~108/deg² either way). What it joins is unrelated collinear *real sources*.
+
+**Corrected 2026-08-04, from 5 to 4.** The Phase 2 fix to `BandImage.background_and_sigma` —
+measuring the noise only from pixels near the median weight, recorded at the time as worth
+under 7% on real tiles — removed one survivor. Every threshold is denominated in that sigma,
+so **a sub-7% change in the noise normalisation moved the false-positive count by 20%**. The
+number here is now what `rbh sweep` and `rbh controls` both produce; see the
+[lab notebook](lab-notebook.md) for how it was tracked down, including a first hypothesis
+that turned out to be wrong.
 
 Inspecting every survivor individually: two are unambiguous spurious joins, one is a real
 edge-on galaxy reassembled from its fragments, and two are unremarkable. Two mitigations were
