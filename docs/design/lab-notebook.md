@@ -29,6 +29,66 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-04 — First scan of new sky, and the assumption it broke
+
+**23.3 arcmin² of sky this project had never looked at**, ten times everything before it, and
+the first two products came back with **84 candidates**. Then the picture explained why.
+
+| observation | area | filters | depth | detections | survivors |
+|---|---|---|---|---|---|
+| hst_10003_01 | 11.65′ | F475W | 25.48 | 1,446 | **76** |
+| hst_10004_02 | 11.65′ | F475W | 28.09 | 742 | 8 |
+
+Seventy-six candidates from one product is not a discovery, it is a symptom. The positions
+say so immediately: median nearest-neighbour separation **3.08″**, minimum 0.08″, all piled
+within about 23″ of one place. Real wakes would scatter.
+
+### What is actually there
+
+Rendering the field settles it in one look. It is a **bright elliptical galaxy filling the
+frame**, and the "candidates" are:
+
+- **Saturation bleed trails and diffraction spikes** — vertical streaks spanning the entire
+  frame, plus a bright diagonal bleed across the bottom. Perfectly linear, enormous axis
+  ratio, huge S/N. The best-scoring feature in the field measures **39.01″ long, axis ratio
+  109, peak S/N 202**. RBH-1 measures 5.5″ and axis ratio 21.
+- **The galaxy's own envelope**, shredded into 307 pieces by the ridge filter.
+
+Position angles pile up: 18 of 76 in a single 15° bin at 105–120°, matching the streak
+direction, against 6.3 expected if they scattered. 14% have axis ratio above 50.
+
+### The assumption this breaks
+
+`CLAUDE.md` has listed, as one of four things most likely to be got wrong:
+
+> *"The hard false positive is the bulgeless edge-on disk galaxy, **not artifacts**. Artifacts
+> are largely handled by searching drizzled CR-rejected products (ADR-0003)."*
+
+**The first scan of real new sky contradicts it.** Drizzling with cosmic-ray rejection removes
+cosmic rays. It does nothing whatever about diffraction spikes and saturation bleeds, because
+those are present in *every* exposure and combine straight through. The claim was true about
+the artifact class it named and quietly generalised to all of them.
+
+Right now the dominant false positive is not a disc galaxy. It is **a bright star or galaxy
+and the instrumental signature around it**, and it outnumbers everything else by a wide
+margin.
+
+`bright_source_mask` already exists and fired — the green region in the diagnostic — but it
+masks the saturated *core* only, while the spikes and bleed radiate well beyond it.
+
+### What it changes
+
+Phase 4's discriminator work was ordered disc-first. It should be **artifact-first**: a
+candidate list where three quarters of the entries are one galaxy's diffraction spikes cannot
+be usefully vetted, and no amount of wake-versus-disc scoring addresses it.
+
+The good news is that this is a tractable, well-posed problem with obvious handles — spikes
+align with the detector axes, radiate from a saturated source, and have axis ratios and S/N
+far outside anything RBH-1 shows. None of that needed to be guessed; it took one scan and one
+picture.
+
+---
+
 ## 2026-08-04 — Reading whole products is 110x faster, and we had searched 2.3 arcmin²
 
 A fair challenge: the project keeps refining details and has not searched any new sky. The

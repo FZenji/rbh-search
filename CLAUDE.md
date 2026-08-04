@@ -23,9 +23,16 @@ measured, a gotcha hit, an assumption disproved. Context gets compressed; the re
 
 1. **This search is area-limited, not depth-limited.** RBH-1 was a high-S/N detection in a
    one-orbit image. Do not propose restricting to deep fields (ADR-0001).
-2. **The hard false positive is the bulgeless edge-on disk galaxy**, not artifacts.
-   Artifacts are largely handled by searching drizzled CR-rejected products (ADR-0003).
-   The disk problem is what kept RBH-1 contested for three years.
+2. **There are two hard false positives, and the first scan of real sky found the one this
+   list used to deny.**
+   - **Bright-source artifacts — the dominant one in practice.** Saturation bleed trails and
+     diffraction spikes. Drizzled CR-rejected products remove *cosmic rays*; these are in
+     every exposure and combine straight through. One bright galaxy produced 76 of the first
+     84 candidates, with a top feature at 39″ and axis ratio 109 (RBH-1: 5.5″, 21). This
+     entry previously said artifacts were "largely handled by ADR-0003" — that was true of
+     one artifact class and wrongly generalised. See the 2026-08-04 lab-notebook entry.
+   - **The bulgeless edge-on disk galaxy**, which is what kept RBH-1 contested for three
+     years, and remains the hard *astrophysical* false positive.
 3. **A null result is the expected outcome and is publishable** — but only because
    injection–recovery measures the selection function (ADR-0009). Anything that changes
    what survives the cascade must be measurable.

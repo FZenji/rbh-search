@@ -80,6 +80,36 @@ provenance now varies with each programme's original solution. The manifest must
 record which product type each tile came from, and Phase 3 should re-check HAP cloud
 coverage across the archive rather than generalising from one visit.
 
+## Amendment, 2026-08-04 (drizzling removes cosmic rays, not every artifact)
+
+The first scan of sky outside RBH-1's own field found the limit of what this decision buys.
+
+Drizzled, cosmic-ray-rejected products do exactly what the name says: they remove features
+that appear in one exposure and not the others. **They do nothing about artifacts present in
+every exposure** — saturation bleed trails and diffraction spikes around bright sources
+combine straight through, arriving in the search plane as perfectly linear, high-contrast,
+high-axis-ratio features. Which is to say: as the thing this pipeline is looking for.
+
+Measured on the first two products searched. One bright elliptical galaxy produced **76 of
+84 candidates**, piled within about 23″ of it, with a median nearest-neighbour separation of
+3.08″. The best-scoring feature in the field measured 39.01″ long at axis ratio 109 and peak
+S/N 202; RBH-1 measures 5.5″ at axis ratio 21. Candidate position angles cluster in the
+streak direction, 18 of 76 in one 15° bin against 6.3 expected.
+
+Nothing here overturns the Decision — drizzled products remain the right search plane, and
+searching individual exposures would be far worse. What changes is the **claim made about it
+downstream**: that artifacts were "largely handled" by this choice. That was true of the
+artifact class this ADR names and was generalised to all of them, including in `CLAUDE.md`'s
+list of things most likely to be got wrong, which asserted the opposite of what the data
+show. Corrected there.
+
+The consequence for Phase 4 is an ordering one. Artifact rejection around bright sources has
+to come **before** wake-versus-disc scoring ([ADR-0008](0008-scored-discriminants-not-cuts.md)),
+because a candidate list that is three-quarters one galaxy's diffraction spikes cannot be
+usefully vetted and no amount of morphological scoring addresses it. `bright_source_mask`
+already exists and fires on the saturated core; it does not reach the spikes radiating beyond
+it.
+
 ## Alternatives considered
 
 - **Individual `flc`/`cal` exposures.** Maximum information and full control over

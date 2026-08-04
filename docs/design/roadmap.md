@@ -251,6 +251,14 @@ fixed; the second is the kind of wart a published data product must not have.
 
 ## Phase 4 — Sweep
 
+**Reordered 2026-08-04 by the first scan of new sky.** Artifact rejection around bright
+sources comes *before* wake-versus-disc scoring. One bright elliptical galaxy produced 76 of
+the first 84 candidates — saturation bleeds and diffraction spikes, which survive drizzling
+because they are in every exposure ([ADR-0003 amendment](../adr/0003-search-plane-drizzled-mosaics.md)).
+A candidate list that is three-quarters one galaxy's spikes cannot be vetted, and no
+morphological scoring addresses it. The handles are clear: spikes align with the detector
+axes, radiate from a saturated source, and sit far outside RBH-1's axis ratio and S/N.
+
 - Full Tier A sweep (≥ 2 filters), then Tier B.
 - Artifact vetting, MRT cross-check, wake-vs-disk discriminator scoring.
 - Ranked candidate catalogue with stamps and a static vetting queue.
