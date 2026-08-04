@@ -58,6 +58,40 @@ output. No coordinator; idempotency by construction.
 - Overlap regions are processed twice. At 25″ overlap on arcminute-scale tiles this is a
   small percentage — an acceptable price for never splitting a candidate.
 
+## Amendment, 2026-08-04 (ownership replaces merging, and the order is fixed by measurement)
+
+**Duplicates are resolved by ownership, not by merging.** The Decision says duplicate
+detections in overlap regions are "merged by sky position". That works, and it needs a
+matching tolerance — which is another number that can be wrong in both directions: too small
+and a genuine duplicate survives twice, too large and two distinct features collapse into
+one. There is no value that reliably does one without risking the other.
+
+Instead every tile has a non-overlapping **core** and processes a larger region around it. A
+detection belongs to exactly the tile whose core contains its centroid. Cores tile the sphere
+with no gaps and no overlaps, so the partition is exact, the deduplication takes no
+parameter, and **a candidate count cannot be inflated by how the sky happened to be cut up**.
+Both properties are asserted in `tests/test_tiling.py`, including that two features half an
+arcsecond apart both survive — which a merging tolerance would have to be tuned not to eat.
+
+A useful consequence: ownership by centroid **halves the overlap strictly required**. A
+feature whose centroid lies in the core extends at most half its length beyond it, so 12.5″
+would do rather than 25″. The Decision's figure is kept anyway — extra pixels are cheap, the
+sweep is 86% detect-bound, and a margin that is obviously sufficient beats one that is exactly
+sufficient.
+
+**The tessellation is HEALPix at order 10**, chosen from this ADR's own memory bound rather
+than by preference. Measured, at 0.05″/pixel for science plus weight in two filters:
+
+| order | cell side | pixels/side | memory per tile |
+|---|---|---|---|
+| 8 | 825″ | 16,490 | 4.4 GB |
+| 9 | 412″ | 8,245 | 1.1 GB |
+| **10** | **206″** | **4,123** | **272 MB** |
+| 11 | 103″ | 2,061 | 68 MB |
+
+"A few hundred MB" picks order 10 without ambiguity. There is a test asserting the memory
+figure, so the order cannot drift away from the constraint that chose it.
+
 ## Alternatives considered
 
 - **One file per work unit.** Simple, no reprojection. Rejected on load balance, duplicate

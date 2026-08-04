@@ -213,7 +213,10 @@ Turn a working detector into a survey.
   results alone — no manifest, no archive query — so the published area is as reproducible as
   the sweep. Footprints are exact per tile (WCS corners) and the MOC order is chosen per
   footprint, after a fixed order was found to over-count small tiles by 12%.
-- Tiling, work queue, claim–process–commit, resumability.
+- Tiling, work queue, claim–process–commit, resumability ✅. HEALPix order 10 (206″ cells,
+  272 MB per tile — chosen from ADR-0004's own memory bound), 30″ overlap, and duplicates
+  resolved by **ownership** rather than a matching tolerance: a detection belongs to the tile
+  whose core contains its centroid. See the [ADR-0004 amendment](../adr/0004-work-unit-is-a-sky-tile.md).
 - Throughput and cost benchmark ✅ measured: **0.207 deg² per core-hour, $0.21 per deg²**
   at $0.043/core-hour with egress excluded, and **86% detect-bound** — so the lever is cores,
   not storage. Detection is linear in area (2.2 s per megapixel, flat across a 64× range), so

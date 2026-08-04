@@ -64,6 +64,7 @@ measured, a gotcha hit, an assumption disproved. Context gets compressed; the re
 | `synthetic.py` | Parametric wake generator. Defaults are **fitted** to the transplant, not published values. |
 | `manifest.py` | What the survey *is*: products, filters, tiers, depth. Offline by design - discovery is `fetch.py`'s job. |
 | `workqueue.py` | Claim-process-commit (ADR-0020). A unit is done iff its output file exists. |
+| `tiling.py` | The fixed HEALPix tessellation (ADR-0004). Cores partition the sky, so duplicates resolve by ownership rather than a matching tolerance. |
 | `sweep.py` | Runs the cascade over many tiles, resumably; derives the survey products from committed results alone. |
 | `footprint.py` | Sky coverage as a MOC: unique area, overlap resolution deepest-first. Order chosen by measuring quantisation bias. |
 | `area.py` | Effective survey area: sky weighted by completeness at each depth (ADR-0019). The denominator of every density limit. |
