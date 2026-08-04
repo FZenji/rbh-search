@@ -71,6 +71,7 @@ measured, a gotcha hit, an assumption disproved. Context gets compressed; the re
 | `synthetic.py` | Parametric wake generator. Defaults are **fitted** to the transplant, not published values. |
 | `manifest.py` | What the survey *is*: products, filters, tiers, depth. Offline by design - discovery is `fetch.py`'s job. |
 | `workqueue.py` | Claim-process-commit (ADR-0020). A unit is done iff its output file exists. |
+| `artifacts.py` | Rejects bright-source artifacts (Phase 4, reordered first). Field-level flag works; per-candidate filtering only catches 12%. |
 | `scan.py` | Points the pipeline at new sky: target selection spread over the sphere, away from RBH-1's field. Reads whole products - fetch cost is per open, not per byte. |
 | `tiling.py` | The fixed HEALPix tessellation (ADR-0004). Cores partition the sky, so duplicates resolve by ownership rather than a matching tolerance. |
 | `sweep.py` | Runs the cascade over many tiles, resumably; derives the survey products from committed results alone. |

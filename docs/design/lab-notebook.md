@@ -29,6 +29,56 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-04 — Artifact rejection: the field-level test works, the per-candidate one barely does
+
+Built `rbh.artifacts` against the 84 real candidates, then applied it. The result splits
+sharply, and only half of it is good news.
+
+### What works: the field-level flag
+
+| | contaminated field | clean field |
+|---|---|---|
+| candidates | 76 | 8 |
+| nearest-neighbour median | **3.08″** | 29.16″ |
+| dominant angle | **110°, shared by 20** | none |
+| `field_is_contaminated` | **True** | False |
+
+Both signatures fire cleanly on the bad field and neither fires on the good one. Telling
+"this product is one bright galaxy" from "this product is sky" is solved.
+
+### What does not: filtering within the field
+
+**10 of 76 rejected. Twelve per cent.** The per-candidate thresholds — axis ratio above 60,
+length above 25″, S/N above 100 — catch the extreme bleed trails and miss everything else,
+because most of the 76 are *galaxy-envelope shreds* with unremarkable axis ratios and S/N.
+They look like plausible wakes one at a time. They are only obviously wrong as a population.
+
+Sixty-six surviving candidates from one galaxy is no more usable than 76.
+
+### Which points at the real fix
+
+Filtering after detection is the wrong layer. The right one is **masking before it**:
+`bright_source_mask` already fires on the saturated core and simply does not reach the spikes
+and bleeds radiating past it. Growing that mask along the detector axes from saturated
+sources would stop these being detected at all, rather than trying to recognise them
+afterwards from their morphology — which is exactly the losing game, since a shred of galaxy
+envelope *is* a short linear feature by every measure the pipeline has.
+
+### The property that was never in doubt, and is now checked
+
+Nothing here touches the real object. RBH-1 survives, and so do all five RBH-1-field
+candidates — no over-rejection. That is asserted directly against the litmus values, so if
+the detector improves and RBH-1 comes back longer or thinner, the test fails and the
+thresholds get revisited deliberately instead of silently clipping the one object the whole
+pipeline is calibrated on.
+
+Over-rejection is the failure to fear here: a real wake removed by an artifact cut is an
+unmeasurable hole in the selection function, which is the one thing ADR-0009 cannot absorb.
+That is why alignment alone never rejects — a genuine wake can lie along a detector axis by
+chance, and 20 of these candidates share an angle to within 7.5°.
+
+---
+
 ## 2026-08-04 — First scan of new sky, and the assumption it broke
 
 **23.3 arcmin² of sky this project had never looked at**, ten times everything before it, and

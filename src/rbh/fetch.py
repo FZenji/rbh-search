@@ -58,11 +58,23 @@ def fetch_tile(
     *,
     half_size_pixels: int = 200,
     proposal_id: str = "",
+    clamp_to_image: bool = False,
 ) -> Tile:
     """Stream a square cutout centred on a sky position from each of ``uris``.
 
     All products must share a pixel grid definition, which holds for products drizzled
     from the same visit. The WCS of the first is carried onto the tile.
+
+    ``clamp_to_image`` chooses between two genuinely different jobs. Cutting a stamp around a
+    *named object* should fail loudly if the object is too near an edge to image properly -
+    that is the default. **Scanning wants the opposite**: a product's pointing centre is not
+    its image centre, so a full-size box around it frequently overhangs an edge, and refusing
+    is pure loss. Measured on the first scan, two of six targets were skipped for exactly
+    this, both in images where the same box fits perfectly once slid inside the frame.
+
+    Clamping slides the box, it never shrinks or re-centres silently: the returned tile
+    carries its own WCS, so where it actually looked is always answerable, and the survey area
+    is computed from that footprint rather than from the request (ADR-0019).
     """
     if not uris:
         msg = "no product URIs given"
@@ -86,10 +98,19 @@ def fetch_tile(
             size = 2 * half_size_pixels
             height, width = hdul[1].shape
 
-            # Bounds must be checked explicitly. A negative slice start is not an error in
-            # numpy - it counts from the far end of the array - so an out-of-bounds request
-            # would silently return pixels from the wrong part of the sky rather than fail.
-            if x0 < 0 or y0 < 0 or x0 + size > width or y0 + size > height:
+            # Bounds must be handled explicitly either way. A negative slice start is not an
+            # error in numpy - it counts from the far end of the array - so an unchecked
+            # out-of-bounds request returns pixels from the wrong part of the sky in silence.
+            if clamp_to_image:
+                if size > width or size > height:
+                    msg = (
+                        f"a {size}x{size} cutout does not fit in the {height}x{width} image "
+                        f"at all; reduce half_size_pixels"
+                    )
+                    raise ValueError(msg)
+                x0 = max(0, min(x0, width - size))
+                y0 = max(0, min(y0, height - size))
+            elif x0 < 0 or y0 < 0 or x0 + size > width or y0 + size > height:
                 msg = (
                     f"cutout [{y0}:{y0 + size}, {x0}:{x0 + size}] falls outside the "
                     f"{height}x{width} image for {ra_deg:.6f} {dec_deg:+.6f}"

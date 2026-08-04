@@ -259,6 +259,12 @@ A candidate list that is three-quarters one galaxy's spikes cannot be vetted, an
 morphological scoring addresses it. The handles are clear: spikes align with the detector
 axes, radiate from a saturated source, and sit far outside RBH-1's axis ratio and S/N.
 
+- **Bright-source artifact rejection** — started. `rbh.artifacts` tells a contaminated field
+  from a clean one reliably (nearest-neighbour 3.08″ vs 29.16″; a dominant angle shared by 20
+  against none), but per-candidate filtering removes only 12% because most contaminants are
+  galaxy-envelope shreds that look plausible one at a time. **The real fix is upstream**:
+  grow `bright_source_mask` along the detector axes from saturated sources so these are never
+  detected, rather than recognised afterwards.
 - Full Tier A sweep (≥ 2 filters), then Tier B.
 - Artifact vetting, MRT cross-check, wake-vs-disk discriminator scoring.
 - Ranked candidate catalogue with stamps and a static vetting queue.
