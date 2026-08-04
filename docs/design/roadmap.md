@@ -203,7 +203,11 @@ Turn a working detector into a survey.
   validated against genuinely shallow real tiles once the manifest exists; that validation is
   required, not optional. Deeper than the discovery visit cannot be simulated at all.
 - Manifest builder over MAST CAOM: every public drizzled extragalactic ACS/WFC, WFC3 and
-  NIRCam mosaic, with S3 URIs and ETags.
+  NIRCam mosaic, with S3 URIs and ETags. **Corpus measured**: 183,637 ACS/WFC + 185,072
+  WFC3/UVIS + 152,601 WFC3/IR + 11,518 NIRCAM/IMAGE = **532,828 products**, ~1,600 deg² of
+  summed coverage before deduplication and the latitude cut. Discovery, the Galactic-latitude
+  filter and `s_region` footprints are in; ETags and measured depths still need attaching
+  per product.
 - MOC footprint union, deduplication, and the **published unique survey area**.
 - Tiling, work queue, claim–process–commit, resumability.
 - Throughput and cost benchmark ✅ measured: **0.207 deg² per core-hour, $0.21 per deg²**

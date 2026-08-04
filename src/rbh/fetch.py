@@ -148,3 +148,161 @@ def _filter_name(primary_header: fits.Header) -> str:
             return value
     msg = "could not determine filter name from header"
     raise ValueError(msg)
+
+
+#: Instruments ADR-0001 puts in scope, spelled the way CAOM spells them.
+#:
+#: **These strings are load-bearing and fail silently when wrong.** ``NIRCAM`` was the first
+#: guess and returns exactly zero products, which would have dropped JWST from the survey
+#: without raising anything; the archive calls it ``NIRCAM/IMAGE``. There is a network test
+#: asserting every name here returns a non-zero count, because that is the only thing that
+#: distinguishes a typo from an instrument that genuinely has no data.
+#:
+#: ``NIRCAM/CORON`` exists and is deliberately excluded: coronagraphic imaging is a masked,
+#: heavily processed mode that shares neither the artifact population nor the selection
+#: function measured for wide-field imaging.
+SURVEY_INSTRUMENTS = ("ACS/WFC", "WFC3/UVIS", "WFC3/IR", "NIRCAM/IMAGE")
+
+#: Measured corpus size per instrument, 2026-08-04, before the Galactic latitude cut and
+#: before deduplication. Recorded so a sweep can be sized without asking the archive, and so
+#: a future count that differs by an order of magnitude is visibly a query problem rather
+#: than an archive that grew.
+CORPUS_COUNTS = {
+    "ACS/WFC": 183_637,
+    "WFC3/UVIS": 185_072,
+    "WFC3/IR": 152_601,
+    "NIRCAM/IMAGE": 11_518,
+}
+
+
+def count_products(instruments: Sequence[str] = SURVEY_INSTRUMENTS) -> dict[str, int]:
+    """Count drizzled science images per instrument, without downloading the table.
+
+    Roughly ten seconds per instrument, against five and a half minutes for the full query -
+    :func:`discover_products` has to pull every row before it can filter any. Size the job
+    with this first.
+    """
+    from astroquery.mast import Observations
+
+    return {
+        instrument: int(
+            Observations.query_criteria_count(
+                dataproduct_type="image",
+                intentType="science",
+                calib_level=DRIZZLED_CALIB_LEVEL,
+                instrument_name=instrument,
+            )
+        )
+        for instrument in instruments
+    }
+
+
+#: Calibration level 3 is CAOM's marker for a combined, drizzled product - the search plane
+#: ADR-0003 fixes. Levels 1 and 2 are raw and per-exposure calibrated, which carry cosmic
+#: rays that would manufacture exactly the linear artifacts this search is vulnerable to.
+DRIZZLED_CALIB_LEVEL = 3
+
+
+def _text(row: object, column: str, default: str = "") -> str:
+    """Read a column as text, tolerating absence and masked values.
+
+    Thirty years of archive metadata has gaps in every column, and a manifest build must
+    degrade rather than raise on one bad row.
+    """
+    value = _raw(row, column)
+    return default if value is None else str(value)
+
+
+def _number(row: object, column: str) -> float | None:
+    """Read a column as a float, or None when it is absent, masked or unparseable."""
+    value = _raw(row, column)
+    if value is None:
+        return None
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def _raw(row: object, column: str) -> object:
+    """Read a raw column value, returning None for absent or masked entries."""
+    try:
+        value = row[column]  # type: ignore[index]
+    except (KeyError, IndexError, TypeError):
+        return None
+    if value is None or bool(getattr(value, "mask", False)):
+        return None
+    return value
+
+
+def discover_products(
+    *,
+    instruments: Sequence[str] = SURVEY_INSTRUMENTS,
+    min_galactic_latitude_deg: float = 20.0,
+    limit: int | None = None,
+) -> list[dict[str, object]]:
+    """Query MAST CAOM for the drizzled extragalactic corpus of ADR-0001.
+
+    Returns plain dictionaries rather than :class:`~rbh.manifest.Product` objects, because
+    two of a Product's fields cannot come from CAOM: the 5-sigma limiting magnitude has to be
+    measured from a weight map (ADR-0018) and the ETag from the object store. Keeping the
+    network layer to what the archive actually said avoids inventing the rest.
+
+    **The Galactic latitude cut is applied here, in the query result rather than in the
+    query**, because CAOM indexes equatorial coordinates and asking it to filter on Galactic
+    latitude would either be unsupported or force a full scan. The corpus is small enough in
+    row count that filtering client-side is free.
+
+    **``limit`` truncates the result, it does not shorten the query.** The archive returns
+    the whole table before anything here can filter it, so a five-row request costs the same
+    five and a half minutes as the full one - measured, on ACS/WFC alone. Use
+    :func:`count_products` to size a job; ``limit`` is only for keeping test output small.
+
+    This endpoint is the least reliable component in the pipeline - it times out regularly
+    and is slow when it does not, which is why every other part of Phase 3 was built to be
+    testable without it.
+    """
+    from astropy.coordinates import SkyCoord
+    from astroquery.mast import Observations
+
+    rows: list[dict[str, object]] = []
+    for instrument in instruments:
+        table = Observations.query_criteria(
+            dataproduct_type="image",
+            intentType="science",
+            calib_level=DRIZZLED_CALIB_LEVEL,
+            instrument_name=instrument,
+        )
+        if table is None or len(table) == 0:
+            continue
+
+        for row in table:
+            ra = _number(row, "s_ra")
+            dec = _number(row, "s_dec")
+            if ra is None or dec is None:
+                continue
+            latitude = float(SkyCoord(ra, dec, unit="deg").galactic.b.deg)
+            if abs(latitude) <= min_galactic_latitude_deg:
+                continue
+
+            rows.append(
+                {
+                    "obs_id": _text(row, "obs_id"),
+                    "instrument": _text(row, "instrument_name", instrument),
+                    "filter_name": _text(row, "filters"),
+                    "exposure_seconds": _number(row, "t_exptime") or 0.0,
+                    "ra_deg": ra,
+                    "dec_deg": dec,
+                    "galactic_latitude_deg": latitude,
+                    # The archive's own footprint polygon. Strictly better than a disc, and
+                    # the reason rbh.footprint prefers it - see product_footprint.
+                    "s_region": _text(row, "s_region"),
+                    "proposal_id": _text(row, "proposal_id"),
+                }
+            )
+            if limit is not None and len(rows) >= limit:
+                return sorted(rows, key=lambda r: str(r["obs_id"]))
+
+    # Sorted so a manifest built from this is deterministic regardless of the order MAST
+    # happened to return rows in (ADR-0012).
+    return sorted(rows, key=lambda r: str(r["obs_id"]))

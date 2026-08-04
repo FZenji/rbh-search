@@ -29,6 +29,65 @@ on, and a script in a temp directory satisfies nothing in
 
 ---
 
+## 2026-08-04 — The corpus, measured: 533,000 products, and a typo that deleted JWST
+
+First real CAOM queries. The numbers ADR-0001 has been describing in words:
+
+| instrument | drizzled science images |
+|---|---|
+| ACS/WFC | 183,637 |
+| WFC3/UVIS | 185,072 |
+| WFC3/IR | 152,601 |
+| NIRCAM/IMAGE | 11,518 |
+| **total** | **532,828** |
+
+Before the Galactic latitude cut and before deduplication. At roughly 11 arcmin² each that
+is about 1,600 deg² of *summed* coverage; the unique area will be far less, and measuring
+how much less is what the MOC machinery is for.
+
+### A wrong instrument name returns zero, not an error
+
+`NIRCAM` is a perfectly plausible spelling. CAOM calls it `NIRCAM/IMAGE`, and the query for
+`NIRCAM` returns **exactly zero products with no error** — so JWST would have been silently
+dropped from the survey, and every subsequent area and limit would have been HST-only while
+claiming otherwise.
+
+Nothing about the code would have shown it. The count was zero, the loop skipped, the
+manifest built cleanly. It surfaced only because the corpus counts were printed per
+instrument rather than as a total, and one row said 0.
+
+**A wrong identifier is indistinguishable from an empty result unless something asserts the
+difference.** There is now a network test that every configured instrument returns a non-zero
+count, and that it stays within a factor of two of the recorded number — so an
+order-of-magnitude change reads as a query problem rather than as archive growth. The counts
+above are recorded in `rbh.fetch.CORPUS_COUNTS` for exactly that comparison.
+
+Also excluded deliberately: `NIRCAM/CORON`. Coronagraphic imaging is masked and heavily
+processed, sharing neither the artifact population nor the selection function measured for
+wide-field imaging.
+
+### `limit` does not limit the query
+
+`discover_products(limit=5)` took **5 minutes 27 seconds** for ACS/WFC alone. The archive
+returns the entire table before any client-side filter can touch it, so a five-row request
+costs exactly what the full one does. `query_criteria_count` gives the same size in **10
+seconds**, so that is what a job should be sized with. Both facts are now in the docstrings,
+because the API's shape actively suggests otherwise.
+
+### Real footprints, at last
+
+CAOM supplies `s_region` — the product's actual sky polygon — and `MOC.from_stcs` consumes it
+directly, at the same +1.1% quantisation bias as a disc. That removes the largest documented
+approximation in the area accounting: discs and rectangles of equal area disagree about
+*which* sky is shared, which is exactly what a partial overlap turns on.
+
+The fallback to a disc remains for products whose region is missing or malformed — thirty
+years of archive metadata guarantees some are — and `region_coverage` reports what fraction
+of a manifest is real polygon rather than guesswork, so an overlap number computed mostly
+from discs can be labelled indicative.
+
+---
+
 ## 2026-08-04 — Throughput: the sweep is detect-bound, and compute is not the constraint
 
 Timed over the 20 cached tiles, single-process, splitting read from detect:

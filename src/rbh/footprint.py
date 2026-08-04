@@ -21,12 +21,11 @@ from astropy import units as u
 from mocpy import MOC
 
 from rbh.area import SkyPatch, completeness_at
+from rbh.manifest import Product
 from rbh.reference import WAKE_LIMIT_BELOW_POINT_SOURCE_MAG
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
-
-    from rbh.manifest import Product
 
 #: HEALPix order for footprints, **chosen by measuring the bias rather than by reasoning
 #: about cell sizes**. A MOC covers a shape with whole cells, so the boundary is always
@@ -77,6 +76,47 @@ def circular_footprint(
     return MOC.from_cone(lon=ra_deg * u.deg, lat=dec_deg * u.deg, radius=radius, max_depth=order)
 
 
+def region_footprint(s_region: str, order: int = DEFAULT_ORDER) -> MOC | None:
+    """Parse a CAOM ``s_region`` STC-S string into a MOC, or None if it cannot be used.
+
+    This is the footprint the archive actually recorded - usually a polygon tracing the
+    detector outline, chip gaps and all - and it is strictly better than the disc below.
+    Measured over-count at :data:`DEFAULT_ORDER` for a 3.4 arcmin ACS-sized square is +1.1%,
+    the same quantisation bias a disc of similar size carries.
+
+    Returns None rather than raising on anything unparseable. Thirty years of archive
+    metadata contains malformed and missing regions, and one bad row must not take out a
+    manifest build; the caller falls back to a disc and the degradation is visible in the
+    count of products lacking a region.
+    """
+    if not s_region or not s_region.strip():
+        return None
+    try:
+        return MOC.from_stcs(s_region.strip(), max_depth=order)
+    except (ValueError, TypeError, RuntimeError):
+        return None
+
+
+def product_footprint(product: Product, order: int = DEFAULT_ORDER) -> MOC:
+    """Best available footprint for a product: its real region if it has one, else a disc."""
+    return region_footprint(product.s_region, order) or circular_footprint(
+        product.ra_deg, product.dec_deg, product.area_arcmin2, order
+    )
+
+
+def region_coverage(products: Sequence[Product]) -> float:
+    """Fraction of products carrying a real footprint rather than falling back to a disc.
+
+    Reported alongside any overlap number, because the disc fallback is wrong precisely at
+    the edges where partial overlaps are decided. An overlap fraction computed over products
+    that are mostly discs is indicative, not measured.
+    """
+    if not products:
+        return 1.0
+    with_region = sum(1 for p in products if region_footprint(p.s_region) is not None)
+    return with_region / len(products)
+
+
 def union(mocs: Iterable[MOC]) -> MOC:
     """Combine any number of footprints. Empty input gives an empty MOC, not an error."""
     result: MOC | None = None
@@ -92,7 +132,7 @@ def area_arcmin2(moc: MOC) -> float:
 
 def survey_footprint(products: Sequence[Product], order: int = DEFAULT_ORDER) -> MOC:
     """Return the union footprint of a manifest: every product's sky, counted once."""
-    return union(circular_footprint(p.ra_deg, p.dec_deg, p.area_arcmin2, order) for p in products)
+    return union(product_footprint(p, order) for p in products)
 
 
 @dataclass(frozen=True)
@@ -146,7 +186,7 @@ def deepest_patches(products: Sequence[Product], order: int = DEFAULT_ORDER) -> 
         products,
         key=lambda p: (-p.point_source_limit_mag, p.uri),  # uri breaks ties stably
     ):
-        footprint = circular_footprint(product.ra_deg, product.dec_deg, product.area_arcmin2, order)
+        footprint = product_footprint(product, order)
         fresh = footprint if claimed is None else footprint.difference(claimed)
         gained = area_arcmin2(fresh)
         if gained > 0:

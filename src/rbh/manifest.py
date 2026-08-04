@@ -53,6 +53,12 @@ class Product:
     #: completeness, and the reason this is a manifest column rather than a runtime lookup.
     point_source_limit_mag: float
     area_arcmin2: float
+    #: CAOM's ``s_region``: the product's real sky footprint as an STC-S string, usually a
+    #: polygon. Empty when the archive did not supply one, in which case
+    #: :func:`rbh.footprint.product_footprint` falls back to a disc of the right area - which
+    #: conserves total area and is wrong at the edges, exactly where partial overlaps are
+    #: decided. Prefer a manifest where this is populated.
+    s_region: str = ""
 
     def sort_key(self) -> tuple[str, str, str]:
         """Stable ordering key. URI last, as the tiebreaker that is guaranteed unique."""
