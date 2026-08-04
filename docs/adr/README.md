@@ -37,6 +37,7 @@ rewritten**.
 | [0017](0017-synthetic-realism.md) | Anchor synthetic realism on transplanted real pixels | Accepted |
 | [0018](0018-selection-function-stratified-by-depth.md) | Stratify the selection function by depth, measured by degrading real tiles | Accepted |
 | [0019](0019-effective-area-is-the-denominator.md) | The survey denominator is effective area, not sky area | Accepted |
+| [0020](0020-work-queue-contract.md) | Completion is a committed output file, not a queue state | Accepted |
 
 ADR-0003 and ADR-0005 carry **amendments** added during Phase 1, recording where
 implementation contradicted an assumption. Amendments correct the Context and are appended

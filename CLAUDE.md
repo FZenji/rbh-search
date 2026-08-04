@@ -62,6 +62,8 @@ measured, a gotcha hit, an assumption disproved. Context gets compressed; the re
 | `tileio.py` | RICE-compressed FITS read/write. |
 | `diagnostics.py` | Renders every detector stage; also the seed of the Phase 5 vetting queue. |
 | `synthetic.py` | Parametric wake generator. Defaults are **fitted** to the transplant, not published values. |
+| `manifest.py` | What the survey *is*: products, filters, tiers, depth. Offline by design - discovery is `fetch.py`'s job. |
+| `workqueue.py` | Claim-process-commit (ADR-0020). A unit is done iff its output file exists. |
 | `area.py` | Effective survey area: sky weighted by completeness at each depth (ADR-0019). The denominator of every density limit. |
 | `depth.py` | Simulates shallower data by degrading real tiles, so completeness can be measured against depth (ADR-0018). Produces an **upper bound**: photon noise only. |
 | `template.py` | Cuts the real RBH-1 out as a transplantable template (ADR-0017). |

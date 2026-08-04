@@ -67,3 +67,4 @@ nav:
       - 0017 Synthetic realism: adr/0017-synthetic-realism.md
       - 0018 Depth-stratified selection function: adr/0018-selection-function-stratified-by-depth.md
       - 0019 Effective area is the denominator: adr/0019-effective-area-is-the-denominator.md
+      - 0020 Work queue contract: adr/0020-work-queue-contract.md
